@@ -1,6 +1,6 @@
 package infra
 
-import "quantum/shared/protocol_v1"
+import "github.com/deviceio/shared/protocol_v1"
 
 // ClusterDeviceModel
 type ClusterDeviceModel struct {

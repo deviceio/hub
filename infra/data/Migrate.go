@@ -2,8 +2,9 @@ package data
 
 import (
 	"log"
-	"quantum/shared/try"
-	"quantum/shared/types"
+
+	"github.com/deviceio/shared/try"
+	"github.com/deviceio/shared/types"
 
 	r "gopkg.in/gorethink/gorethink.v2"
 )

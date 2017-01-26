@@ -2,7 +2,8 @@ package domain
 
 import (
 	"net/http"
-	"quantum/hub/cluster"
+
+	"github.com/deviceio/hub/cluster"
 )
 
 // ClusterService ...

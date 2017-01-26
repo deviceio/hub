@@ -1,10 +1,11 @@
 package domain
 
 import (
-	"quantum/hub/infra"
-	"quantum/shared/logging"
-	"quantum/shared/protocol_v1"
 	"sync"
+
+	"github.com/deviceio/hub/infra"
+	"github.com/deviceio/shared/logging"
+	"github.com/deviceio/shared/protocol_v1"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/uuid"

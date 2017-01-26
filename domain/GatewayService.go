@@ -2,9 +2,10 @@ package domain
 
 import (
 	"net/http"
-	"quantum/shared/logging"
 	"sync"
 	"time"
+
+	"github.com/deviceio/shared/logging"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"

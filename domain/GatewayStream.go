@@ -1,8 +1,8 @@
 package domain
 
 import (
-	"quantum/shared/logging"
-	"quantum/shared/protocol_v1"
+	"github.com/deviceio/shared/logging"
+	"github.com/deviceio/shared/protocol_v1"
 
 	"github.com/golang/protobuf/proto"
 )

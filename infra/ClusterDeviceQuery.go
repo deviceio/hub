@@ -1,8 +1,8 @@
 package infra
 
 import (
-	"quantum/hub/infra/data"
-	"quantum/shared/logging"
+	"github.com/deviceio/hub/infra/data"
+	"github.com/deviceio/shared/logging"
 )
 
 // ClusterDeviceQuery ...

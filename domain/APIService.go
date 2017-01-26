@@ -5,8 +5,9 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"quantum/shared/protocol_v1"
 	"runtime/debug"
+
+	"github.com/deviceio/shared/protocol_v1"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/gorilla/mux"

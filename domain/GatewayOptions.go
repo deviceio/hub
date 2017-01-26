@@ -1,6 +1,6 @@
 package domain
 
-import "quantum/shared/logging"
+import "github.com/deviceio/shared/logging"
 
 // GatewayOptions ...
 type GatewayOptions struct {

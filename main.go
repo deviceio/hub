@@ -2,11 +2,12 @@ package main
 
 import (
 	"log"
-	"quantum/hub/domain"
-	"quantum/hub/infra"
-	"quantum/hub/infra/data"
-	"quantum/shared/config"
-	"quantum/shared/logging"
+
+	"github.com/deviceio/hub/domain"
+	"github.com/deviceio/hub/infra"
+	"github.com/deviceio/hub/infra/data"
+	"github.com/deviceio/shared/config"
+	"github.com/deviceio/shared/logging"
 )
 
 func main() {
@@ -25,8 +26,8 @@ func main() {
 
 	config.SetConfigStruct(&configuration)
 	config.AddFileName("config.json")
-	config.AddFilePath("/etc/quantum/hub")
-	config.AddFilePath("c:/ProgramData/quantum/hub")
+	config.AddFilePath("/etc/github.com/deviceio/hub")
+	config.AddFilePath("c:/ProgramData/github.com/deviceio/hub")
 
 	if err := config.Parse(); err != nil {
 		log.Fatal(err)
