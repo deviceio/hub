@@ -2,6 +2,8 @@ package main
 
 import (
 	"log"
+	"math/rand"
+	"time"
 
 	"github.com/deviceio/hub/domain"
 	"github.com/deviceio/hub/infra"
@@ -11,6 +13,8 @@ import (
 )
 
 func main() {
+	rand.Seed(time.Now().Unix()) //very important
+
 	var configuration struct {
 		APIBind            string
 		APITLSCertPath     string
@@ -26,8 +30,8 @@ func main() {
 
 	config.SetConfigStruct(&configuration)
 	config.AddFileName("config.json")
-	config.AddFilePath("/etc/github.com/deviceio/hub")
-	config.AddFilePath("c:/ProgramData/github.com/deviceio/hub")
+	config.AddFilePath("/etc/deviceio/hub")
+	config.AddFilePath("c:/ProgramData/deviceio/hub")
 
 	if err := config.Parse(); err != nil {
 		log.Fatal(err)

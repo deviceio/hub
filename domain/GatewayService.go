@@ -90,24 +90,6 @@ func (t *GatewayService) FindConnectionForDevice(deviceid string) *GatewayConnec
 	return t.conns[deviceid]
 }
 
-// addConnection adds a GatewayConnection to this GatewayService's list of active
-// connections. This is a locking call.
-func (t *GatewayService) addConnection(c *GatewayConnection) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-
-	t.conns[c.handshake.AgentID] = c
-}
-
-// delConnection removes a GatewayConnection from this GatewayService's list of active
-// connections. This is a locking call.
-func (t *GatewayService) delConnection(c *GatewayConnection) {
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
-
-	delete(t.conns, c.handshake.AgentID)
-}
-
 // httpGetV1Status -> GET /v1/status
 func (t *GatewayService) httpGetV1Status(resp http.ResponseWriter, req *http.Request) {
 	resp.Write([]byte("OK"))
@@ -124,12 +106,24 @@ func (t *GatewayService) httpGetV1Connect(resp http.ResponseWriter, req *http.Re
 		return
 	}
 
+	c := NewGatewayConnection(conn, &logging.DefaultLogger{}, t)
+
+	config, err := c.GetConfig()
+
+	if err != nil {
+		t.logger.Error("Device failed connection: ", err)
+		return
+	}
+
+	t.mutex.Lock()
+	defer t.mutex.Unlock()
+
+	t.conns[config["ID"].(string)] = c
+
 	t.logger.Debug(
-		"New Agent Connection: LocalAddr=%v RemoteAddr=%v",
+		"New Device Connection: LocalAddr=%v RemoteAddr=%v Config=%v",
 		conn.LocalAddr(),
 		conn.RemoteAddr(),
+		config,
 	)
-
-	c := NewGatewayConnection(conn, &logging.DefaultLogger{}, t)
-	c.start()
 }

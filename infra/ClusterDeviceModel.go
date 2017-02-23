@@ -1,7 +1,5 @@
 package infra
 
-import "github.com/deviceio/shared/protocol_v1"
-
 // ClusterDeviceModel
 type ClusterDeviceModel struct {
 	id           string
@@ -10,18 +8,6 @@ type ClusterDeviceModel struct {
 	platform     string
 	isConnected  bool
 	tags         []string
-}
-
-// NewClusterDeviceModelFromHandshake ...
-func NewClusterDeviceModelFromHandshake(handshake *protocol_v1.Handshake, isConnected bool) *ClusterDeviceModel {
-	return &ClusterDeviceModel{
-		architecture: handshake.Architecture,
-		hostname:     handshake.Hostname,
-		id:           handshake.AgentID,
-		isConnected:  isConnected,
-		platform:     handshake.Platform,
-		tags:         handshake.Tags,
-	}
 }
 
 // ID ...
