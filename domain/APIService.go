@@ -66,6 +66,13 @@ func (t *APIService) status(rw http.ResponseWriter, r *http.Request) {
 // httpProxyDevice
 func (t *APIService) httpProxyDevice(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	c := t.hub.Gateway.FindConnectionForDevice(vars["deviceid"])
+	c, err := t.hub.Gateway.FindConnectionForDevice(vars["deviceid"])
+
+	if err != nil && err == ErrGatewayDeviceDoesNotExist {
+		w.WriteHeader(400)
+		w.Write([]byte(err.Error()))
+		return
+	}
+
 	c.ProxyRequest(w, r, vars["path"])
 }

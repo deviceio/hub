@@ -12,7 +12,7 @@ import (
 )
 
 // GatewayService is responsible for managing the upgrade process and lifecylce
-// of agent transport connections. GatewayService also provides a domain-level
+// of device transport connections. GatewayService also provides a domain-level
 // api to locate and retrieve active connections associated with the GatewayService
 // component
 type GatewayService struct {
@@ -31,7 +31,7 @@ type GatewayService struct {
 	// opts various GatewayService options
 	opts *GatewayOptions
 
-	// wsupgrader is used to upgrade incoming websocket upgrade requests
+	// wsupgrader is used to upgrade incoming websocket connections
 	wsupgrader *websocket.Upgrader
 }
 
@@ -65,7 +65,6 @@ func (t *GatewayService) Start() {
 	}
 
 	router.HandleFunc("/v1/connect", t.httpGetV1Connect).Methods("GET")
-	router.HandleFunc("/v1/status", t.httpGetV1Status).Methods("GET")
 
 	server.Handle("/", router)
 
@@ -82,20 +81,24 @@ func (t *GatewayService) Start() {
 }
 
 // FindConnectionForDevice locates a GatewayConnection currently connected to this
-// GatewayService by device ID (AgentID) and returns the connection for use.
-func (t *GatewayService) FindConnectionForDevice(deviceid string) *GatewayConnection {
+// GatewayService by device ID and returns the connection for use.
+func (t *GatewayService) FindConnectionForDevice(deviceid string) (*GatewayConnection, error) {
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	return t.conns[deviceid]
+	c, ok := t.conns[deviceid]
+
+	if !ok {
+		return nil, ErrGatewayDeviceDoesNotExist
+	}
+
+	return c, nil
 }
 
-// httpGetV1Status -> GET /v1/status
-func (t *GatewayService) httpGetV1Status(resp http.ResponseWriter, req *http.Request) {
-	resp.Write([]byte("OK"))
-}
-
-// httpGetV1Connect -> GET /v1/connect
+// httpGetV1Connect is the gateway http endpoint that accepts new device connections.
+// this method is responsible for accepting the connection, adjuticating it with the cluster
+// and communicating with other domain components to ensure it is properly tracked and updated
+// in the database.
 func (t *GatewayService) httpGetV1Connect(resp http.ResponseWriter, req *http.Request) {
 	conn, err := t.wsupgrader.Upgrade(resp, req, nil)
 
@@ -103,27 +106,29 @@ func (t *GatewayService) httpGetV1Connect(resp http.ResponseWriter, req *http.Re
 		t.logger.Error(err.Error())
 		resp.WriteHeader(400)
 		resp.Write([]byte(""))
+		t.logger.Error("Device connection attempt failed websocket upgrade:", err.Error())
 		return
 	}
 
 	c := NewGatewayConnection(conn, &logging.DefaultLogger{}, t)
 
-	config, err := c.GetConfig()
+	info, err := c.Info()
 
 	if err != nil {
-		t.logger.Error("Device failed connection: ", err)
+		t.logger.Error("Device failed to provide info:", err.Error())
+		c.wsconn.Close()
 		return
 	}
 
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	t.conns[config["ID"].(string)] = c
+	t.conns[info.ID] = c
 
 	t.logger.Debug(
-		"New Device Connection: LocalAddr=%v RemoteAddr=%v Config=%v",
+		"New Device Connection: LocalAddr=%v RemoteAddr=%v Info=%v",
 		conn.LocalAddr(),
 		conn.RemoteAddr(),
-		config,
+		info,
 	)
 }

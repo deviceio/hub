@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"math/rand"
 	"time"
@@ -8,11 +9,21 @@ import (
 	"github.com/deviceio/hub/domain"
 	"github.com/deviceio/hub/infra"
 	"github.com/deviceio/hub/infra/data"
+	"github.com/deviceio/hub/installer"
 	"github.com/deviceio/shared/config"
 	"github.com/deviceio/shared/logging"
 )
 
+var install = flag.Bool("install", false, "Installs the program")
+
 func main() {
+	flag.Parse()
+
+	if *install {
+		installer.Install()
+		return
+	}
+
 	rand.Seed(time.Now().Unix()) //very important
 
 	var configuration struct {

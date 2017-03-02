@@ -22,30 +22,8 @@ func NewClusterService(hub *Hub, opts *ClusterOptions) *ClusterService {
 	}
 }
 
-// AuthDevice ...
-func (t *ClusterService) AuthDevice(model cluster.DeviceModel) bool {
-	if model.ID() == "" {
-		return false
-	}
-
-	if model.Architecture() == "" {
-		return false
-	}
-
-	if model.Hostname() == "" {
-		return false
-	}
-
-	if model.Platform() == "" {
-		return false
-	}
-
-	return true
-}
-
 // AddOrUpdateDevice ...
-func (t *ClusterService) AddOrUpdateDevice(model cluster.DeviceModel) {
-	t.deviceCommand.AddOrUpdate(model)
+func (t *ClusterService) AddOrUpdateDevice(model *DeviceInfoModel) {
 }
 
 // DeviceExists ...
