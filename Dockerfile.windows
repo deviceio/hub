@@ -1,0 +1,11 @@
+FROM microsoft/windowsservercore
+
+RUN powershell.exe -Command \
+    $webclient = New-Object System.Net.WebClient; \
+    $webclient.DownloadFile('https://download.rethinkdb.com/windows/rethinkdb-2.3.5.zip','c:\rethink.zip'); \
+    $webclient.DownloadFile('https://github.com/deviceio/hub/releases/download/test.v1/deviceio-hub.windows.x86_64.exe','c:\hub.exe'); \    
+    Expand-Archive 'c:\rethink.zip' 'c:\rethinkdb'; \    
+    Remove-Item 'c:\rethink.zip';
+
+CMD powershell.exe -Command "& c:\rethinkdb\rethinkdb.exe" & \
+    powershell.exe -Command "& c:\hub.exe"

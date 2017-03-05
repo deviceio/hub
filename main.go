@@ -24,7 +24,7 @@ func main() {
 		return
 	}
 
-	rand.Seed(time.Now().Unix()) //very important
+	rand.Seed(time.Now().UnixNano()) //very important
 
 	var configuration struct {
 		APIBind            string
@@ -40,9 +40,8 @@ func main() {
 	}
 
 	config.SetConfigStruct(&configuration)
-	config.AddFileName("config.json")
-	config.AddFilePath("/etc/deviceio/hub")
-	config.AddFilePath("c:/ProgramData/deviceio/hub")
+	config.AddConfigPath("/etc/deviceio/hub/config.json")
+	config.AddFilePath("c:/ProgramData/deviceio/hub/config.json")
 
 	if err := config.Parse(); err != nil {
 		log.Fatal(err)
