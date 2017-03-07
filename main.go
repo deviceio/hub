@@ -41,7 +41,7 @@ func main() {
 
 	config.SetConfigStruct(&configuration)
 	config.AddConfigPath("/etc/deviceio/hub/config.json")
-	config.AddFilePath("c:/ProgramData/deviceio/hub/config.json")
+	config.AddConfigPath("c:/ProgramData/deviceio/hub/config.json")
 
 	if err := config.Parse(); err != nil {
 		log.Fatal(err)

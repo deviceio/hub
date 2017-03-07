@@ -16,7 +16,7 @@ import (
 // api to locate and retrieve active connections associated with the GatewayService
 // component
 type GatewayService struct {
-	// conns provides a map of gateway connections indexed by AgentID
+	// conns provides a map of gateway connections indexed by Device ID
 	conns map[string]*GatewayConnection
 
 	// hub provides access the the top-level hub root aggregate of the domain
@@ -126,9 +126,13 @@ func (t *GatewayService) httpGetV1Connect(resp http.ResponseWriter, req *http.Re
 	t.conns[info.ID] = c
 
 	t.logger.Debug(
-		"New Device Connection: LocalAddr=%v RemoteAddr=%v Info=%v",
+		"Device Connected: LocalAddr=%v RemoteAddr=%v ID=%v Hostname=%v Platform=%v Arch=%v Tags=%v",
 		conn.LocalAddr(),
 		conn.RemoteAddr(),
-		info,
+		info.ID,
+		info.Hostname,
+		info.Platform,
+		info.Architecture,
+		info.Tags,
 	)
 }
