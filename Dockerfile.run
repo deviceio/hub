@@ -1,0 +1,4 @@
+#!/bin/bash
+
+rethinkdb --bind all
+/opt/deviceio/hub/bin/hub

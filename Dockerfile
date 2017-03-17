@@ -23,4 +23,4 @@ RUN rm -rf /usr/local/go &&\
     yum -y remove wget git &&\
     yum -y clean all
 
-CMD rethinkdb --bind all & sleep 5 && /opt/deviceio/hub/bin/hub
+CMD rethinkdb --bind all & sleep 15 && /opt/deviceio/hub/bin/hub
