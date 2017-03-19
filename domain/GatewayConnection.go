@@ -4,10 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"io"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/deviceio/shared/logging"
 	"github.com/hashicorp/yamux"
@@ -20,6 +18,16 @@ import (
 // GatewayConnection represents the underlying connection of a connected device to
 // the gateway component
 type GatewayConnection struct {
+	// info contains information about the connecting device
+	info struct {
+		ID           string
+		Hostname     string
+		Architecture string
+		Platform     string
+		IsConnected  bool
+		Tags         []string
+	}
+
 	// gwservice used to interact with the parent GatewayService domain-level api
 	gwservice *GatewayService
 
@@ -42,11 +50,14 @@ type GatewayConnection struct {
 	// server over the session multiplexer
 	httpclient *http.Client
 
+	// httpproxy is used to proxy requests to the device's local http server.
+	// this httputil.ReverseProxy contains a custom transport to address the device's http
+	// server over the session multiplexer
 	httpproxy *httputil.ReverseProxy
 }
 
 // NewGatewayConnection instantiates a new instance of the GatewayConnection type
-func NewGatewayConnection(wsconn *websocket.Conn, logger logging.Logger, gateway *GatewayService) *GatewayConnection {
+func NewGatewayConnection(wsconn *websocket.Conn, logger logging.Logger, gateway *GatewayService) (*GatewayConnection, error) {
 	client, _ := yamux.Client(wsconn.UnderlyingConn(), nil)
 
 	gc := &GatewayConnection{
@@ -78,35 +89,23 @@ func NewGatewayConnection(wsconn *websocket.Conn, logger logging.Logger, gateway
 				InsecureSkipVerify: true,
 			},
 		},
-		FlushInterval: 100 * time.Millisecond,
 	}
 
-	go gc.closeloop()
-
-	return gc
-}
-
-// Info returns key information about the device that the hub requires to track
-// and address the device throughout the cluster and the API. This information
-// is assumed to fit the prescribed model.
-func (t *GatewayConnection) Info() (*DeviceInfoModel, error) {
-	resp, err := t.httpclient.Get("http://localhost/info")
+	resp, err := gc.httpclient.Get("http://localhost/info")
 
 	if err != nil {
-		t.logger.Error("Error retrieving device info:", err.Error())
+		gc.logger.Error("Error retrieving device info:", err.Error())
 		return nil, err
 	}
 
-	var config *DeviceInfoModel
-
-	err = json.NewDecoder(resp.Body).Decode(&config)
+	err = json.NewDecoder(resp.Body).Decode(&gc.info)
 
 	if err != nil {
-		t.logger.Error("Error decoding device info:", err.Error())
+		gc.logger.Error("Error decoding device info:", err.Error())
 		return nil, err
 	}
 
-	return config, nil
+	return gc, nil
 }
 
 // ProxyRequest takes a http request originating elsewhere within the domain and
@@ -119,7 +118,7 @@ func (t *GatewayConnection) ProxyRequest(w http.ResponseWriter, r *http.Request,
 	r.URL.Path = "/" + path
 	r.URL.Host = "localhost"
 
-	resp, err := t.httpclient.Do(r)
+	/*resp, err := t.httpclient.Do(r)
 
 	if err != nil {
 		return err
@@ -134,26 +133,9 @@ func (t *GatewayConnection) ProxyRequest(w http.ResponseWriter, r *http.Request,
 		if err != io.EOF {
 			return err
 		}
-	}
+	}*/
+
+	t.httpproxy.ServeHTTP(w, r)
 
 	return nil
-}
-
-// closeloop watches for a break in the device connection
-func (t *GatewayConnection) closeloop() {
-	for {
-		if t.session.IsClosed() {
-			t.logger.Error("Agent Connection Closed")
-			return
-		}
-		time.Sleep(1 * time.Second)
-	}
-}
-
-func (t *GatewayConnection) copyHeader(dst, src http.Header) {
-	for k, vv := range src {
-		for _, v := range vv {
-			dst.Add(k, v)
-		}
-	}
 }

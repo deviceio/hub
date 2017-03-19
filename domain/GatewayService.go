@@ -7,6 +7,8 @@ import (
 
 	"github.com/deviceio/shared/logging"
 
+	"strings"
+
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 )
@@ -18,6 +20,9 @@ import (
 type GatewayService struct {
 	// conns provides a map of gateway connections indexed by Device ID
 	conns map[string]*GatewayConnection
+
+	// hosts provides a map of gateway connections indexed by Device Hostname
+	hosts map[string]*GatewayConnection
 
 	// hub provides access the the top-level hub root aggregate of the domain
 	hub *Hub
@@ -38,7 +43,8 @@ type GatewayService struct {
 // NewGatewayService creates a new instance of the GatewayService type
 func NewGatewayService(hub *Hub, opts *GatewayOptions) *GatewayService {
 	return &GatewayService{
-		conns:  make(map[string]*GatewayConnection),
+		conns:  map[string]*GatewayConnection{},
+		hosts:  map[string]*GatewayConnection{},
 		hub:    hub,
 		logger: opts.Logger,
 		mutex:  &sync.Mutex{},
@@ -86,13 +92,20 @@ func (t *GatewayService) FindConnectionForDevice(deviceid string) (*GatewayConne
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	c, ok := t.conns[deviceid]
+	deviceid = strings.ToLower(deviceid)
 
-	if !ok {
-		return nil, ErrGatewayDeviceDoesNotExist
+	c, cok := t.conns[deviceid]
+	h, hok := t.hosts[deviceid]
+
+	if cok {
+		return c, nil
 	}
 
-	return c, nil
+	if hok {
+		return h, nil
+	}
+
+	return nil, ErrGatewayDeviceDoesNotExist
 }
 
 // httpGetV1Connect is the gateway http endpoint that accepts new device connections.
@@ -110,29 +123,56 @@ func (t *GatewayService) httpGetV1Connect(resp http.ResponseWriter, req *http.Re
 		return
 	}
 
-	c := NewGatewayConnection(conn, &logging.DefaultLogger{}, t)
-
-	info, err := c.Info()
+	c, err := NewGatewayConnection(conn, &logging.DefaultLogger{}, t)
 
 	if err != nil {
-		t.logger.Error("Device failed to provide info:", err.Error())
-		c.wsconn.Close()
+		t.logger.Error("Failed to create gateway connection:", err.Error())
 		return
 	}
 
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	t.conns[info.ID] = c
+	t.conns[strings.ToLower(c.info.ID)] = c
+	t.hosts[strings.ToLower(c.info.Hostname)] = c
+
+	go t.closeloop(c)
 
 	t.logger.Debug(
 		"Device Connected: LocalAddr=%v RemoteAddr=%v ID=%v Hostname=%v Platform=%v Arch=%v Tags=%v",
 		conn.LocalAddr(),
 		conn.RemoteAddr(),
-		info.ID,
-		info.Hostname,
-		info.Platform,
-		info.Architecture,
-		info.Tags,
+		c.info.ID,
+		c.info.Hostname,
+		c.info.Platform,
+		c.info.Architecture,
+		c.info.Tags,
 	)
+}
+
+// closeloop watches for a break in the device connection
+func (t *GatewayService) closeloop(c *GatewayConnection) {
+	for {
+		if c.session.IsClosed() {
+			t.logger.Debug(
+				"Device Disconnected: LocalAddr=%v RemoteAddr=%v ID=%v Hostname=%v Platform=%v Arch=%v Tags=%v",
+				c.wsconn.LocalAddr(),
+				c.wsconn.RemoteAddr(),
+				c.info.ID,
+				c.info.Hostname,
+				c.info.Platform,
+				c.info.Architecture,
+				c.info.Tags,
+			)
+
+			t.mutex.Lock()
+			defer t.mutex.Unlock()
+
+			delete(t.conns, strings.ToLower(c.info.ID))
+			delete(t.hosts, strings.ToLower(c.info.Hostname))
+
+			return
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
