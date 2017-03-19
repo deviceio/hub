@@ -74,5 +74,10 @@ func (t *APIService) httpProxyDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.ProxyRequest(w, r, vars["path"])
+	err = c.ProxyRequest(w, r, vars["path"])
+
+	if err != nil {
+		t.opts.Logger.Error(err.Error())
+		return
+	}
 }

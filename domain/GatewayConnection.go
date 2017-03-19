@@ -12,6 +12,8 @@ import (
 	"github.com/deviceio/shared/logging"
 	"github.com/hashicorp/yamux"
 
+	"net/http/httputil"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -39,6 +41,8 @@ type GatewayConnection struct {
 	// this http.Client contains a custom transport to address the device's http
 	// server over the session multiplexer
 	httpclient *http.Client
+
+	httpproxy *httputil.ReverseProxy
 }
 
 // NewGatewayConnection instantiates a new instance of the GatewayConnection type
@@ -61,6 +65,20 @@ func NewGatewayConnection(wsconn *websocket.Conn, logger logging.Logger, gateway
 				InsecureSkipVerify: true,
 			},
 		},
+	}
+
+	gc.httpproxy = &httputil.ReverseProxy{
+		Director: func(r *http.Request) {
+		},
+		Transport: &http.Transport{
+			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+				return client.Open()
+			},
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+		FlushInterval: 100 * time.Millisecond,
 	}
 
 	go gc.closeloop()
@@ -95,9 +113,7 @@ func (t *GatewayConnection) Info() (*DeviceInfoModel, error) {
 // proxies the request to the device's local http server over a new multiplexed
 // stream. This function is responsible to mutate the request before sending adding
 // or removing information as necessary making ready for device consumption.
-func (t *GatewayConnection) ProxyRequest(w http.ResponseWriter, r *http.Request, path string) {
-	flusher, _ := w.(http.Flusher)
-
+func (t *GatewayConnection) ProxyRequest(w http.ResponseWriter, r *http.Request, path string) error {
 	r.RequestURI = ""
 	r.URL.Scheme = "http"
 	r.URL.Path = "/" + path
@@ -106,30 +122,19 @@ func (t *GatewayConnection) ProxyRequest(w http.ResponseWriter, r *http.Request,
 	resp, err := t.httpclient.Do(r)
 
 	if err != nil {
-		w.WriteHeader(500)
-		w.Write([]byte(err.Error()))
-		return
+		return err
 	}
 
-	if resp.Header.Get("Transport-Encoding") != "chunked" {
-		io.Copy(w, resp.Body)
-		return
+	t.copyHeader(w.Header(), resp.Header)
+	w.WriteHeader(resp.StatusCode)
+
+	buf := make([]byte, 250000)
+
+	if _, err = io.CopyBuffer(w, resp.Body, buf); err != nil {
+		return err
 	}
 
-	if resp.Header.Get("Transport-Encoding") == "chunked" {
-		buf := make([]byte, 250000)
-		for {
-			i, err := resp.Body.Read(buf)
-
-			if err == io.EOF {
-				break
-			}
-
-			w.Write(buf[:i])
-			flusher.Flush()
-		}
-		return
-	}
+	return nil
 }
 
 // closeloop watches for a break in the device connection
@@ -140,5 +145,13 @@ func (t *GatewayConnection) closeloop() {
 			return
 		}
 		time.Sleep(1 * time.Second)
+	}
+}
+
+func (t *GatewayConnection) copyHeader(dst, src http.Header) {
+	for k, vv := range src {
+		for _, v := range vv {
+			dst.Add(k, v)
+		}
 	}
 }
