@@ -131,7 +131,9 @@ func (t *GatewayConnection) ProxyRequest(w http.ResponseWriter, r *http.Request,
 	buf := make([]byte, 250000)
 
 	if _, err = io.CopyBuffer(w, resp.Body, buf); err != nil {
-		return err
+		if err != io.EOF {
+			return err
+		}
 	}
 
 	return nil
