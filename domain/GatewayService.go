@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"fmt"
 	"net/http"
 	"sync"
 	"time"
@@ -22,7 +23,7 @@ type GatewayService struct {
 	conns map[string]*GatewayConnection
 
 	// hosts provides a map of gateway connections indexed by Device Hostname
-	hosts map[string]*GatewayConnection
+	hosts map[string][]*GatewayConnection
 
 	// hub provides access the the top-level hub root aggregate of the domain
 	hub *Hub
@@ -44,7 +45,7 @@ type GatewayService struct {
 func NewGatewayService(hub *Hub, opts *GatewayOptions) *GatewayService {
 	return &GatewayService{
 		conns:  map[string]*GatewayConnection{},
-		hosts:  map[string]*GatewayConnection{},
+		hosts:  map[string][]*GatewayConnection{},
 		hub:    hub,
 		logger: opts.Logger,
 		mutex:  &sync.Mutex{},
@@ -102,7 +103,13 @@ func (t *GatewayService) FindConnectionForDevice(deviceid string) (*GatewayConne
 	}
 
 	if hok {
-		return h, nil
+		if len(h) == 1 {
+			return h[0], nil
+		} else if len(h) > 1 {
+			return nil, fmt.Errorf("Ambiguous hostname lookup. Two or more devices connected with the same hostname")
+		} else {
+			return nil, fmt.Errorf("No device connections indexed by this hostname")
+		}
 	}
 
 	return nil, ErrGatewayDeviceDoesNotExist
@@ -113,9 +120,13 @@ func (t *GatewayService) FindConnectionForDevice(deviceid string) (*GatewayConne
 // and communicating with other domain components to ensure it is properly tracked and updated
 // in the database.
 func (t *GatewayService) httpGetV1Connect(resp http.ResponseWriter, req *http.Request) {
-	conn, err := t.wsupgrader.Upgrade(resp, req, nil)
+	var err error
+	var ok bool
+	var wsconn *websocket.Conn
+	var gwconn *GatewayConnection
+	var hostconns []*GatewayConnection
 
-	if err != nil {
+	if wsconn, err = t.wsupgrader.Upgrade(resp, req, nil); err != nil {
 		t.logger.Error(err.Error())
 		resp.WriteHeader(400)
 		resp.Write([]byte(""))
@@ -123,9 +134,7 @@ func (t *GatewayService) httpGetV1Connect(resp http.ResponseWriter, req *http.Re
 		return
 	}
 
-	c, err := NewGatewayConnection(conn, &logging.DefaultLogger{}, t)
-
-	if err != nil {
+	if gwconn, err = NewGatewayConnection(wsconn, &logging.DefaultLogger{}, t); err != nil {
 		t.logger.Error("Failed to create gateway connection:", err.Error())
 		return
 	}
@@ -133,24 +142,30 @@ func (t *GatewayService) httpGetV1Connect(resp http.ResponseWriter, req *http.Re
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
-	t.conns[strings.ToLower(c.info.ID)] = c
-	t.hosts[strings.ToLower(c.info.Hostname)] = c
+	t.conns[strings.ToLower(gwconn.info.ID)] = gwconn
 
-	go t.closeloop(c)
+	if hostconns, ok = t.hosts[strings.ToLower(gwconn.info.Hostname)]; !ok {
+		t.hosts[strings.ToLower(gwconn.info.Hostname)] = []*GatewayConnection{gwconn}
+	} else {
+		hostconns = append(hostconns, gwconn)
+	}
+
+	go t.closeloop(gwconn)
 
 	t.logger.Debug(
 		"Device Connected: LocalAddr=%v RemoteAddr=%v ID=%v Hostname=%v Platform=%v Arch=%v Tags=%v",
-		conn.LocalAddr(),
-		conn.RemoteAddr(),
-		c.info.ID,
-		c.info.Hostname,
-		c.info.Platform,
-		c.info.Architecture,
-		c.info.Tags,
+		wsconn.LocalAddr(),
+		wsconn.RemoteAddr(),
+		gwconn.info.ID,
+		gwconn.info.Hostname,
+		gwconn.info.Platform,
+		gwconn.info.Architecture,
+		gwconn.info.Tags,
 	)
 }
 
-// closeloop watches for a break in the device connection
+// closeloop watches for a break in the device connection and cleans up the connection
+// from the gateway service
 func (t *GatewayService) closeloop(c *GatewayConnection) {
 	for {
 		if c.session.IsClosed() {
@@ -168,8 +183,17 @@ func (t *GatewayService) closeloop(c *GatewayConnection) {
 			t.mutex.Lock()
 			defer t.mutex.Unlock()
 
-			delete(t.conns, strings.ToLower(c.info.ID))
-			delete(t.hosts, strings.ToLower(c.info.Hostname))
+			id := strings.ToLower(c.info.ID)
+			hostname := strings.ToLower(c.info.Hostname)
+
+			delete(t.conns, id)
+
+			for a, host := range t.hosts[hostname] {
+				if host == c {
+					t.hosts[hostname] = append(t.hosts[hostname][:a], t.hosts[hostname][a+1:]...)
+					break
+				}
+			}
 
 			return
 		}
