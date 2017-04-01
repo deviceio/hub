@@ -1,25 +1,31 @@
 package domain
 
 import (
+	"crypto/tls"
 	"log"
 	"net/http"
 	"runtime/debug"
+	"time"
 
 	"github.com/deviceio/hub/www"
+	"github.com/deviceio/shared/logging"
+	"github.com/deviceio/shared/types"
 	"github.com/gorilla/mux"
 )
 
 // APIService ...
 type APIService struct {
-	hub  *Hub
-	opts *APIOptions
+	hub    *Hub
+	opts   *APIOptions
+	logger logging.Logger
 }
 
 // NewAPIService ...
 func NewAPIService(hub *Hub, opts *APIOptions) *APIService {
 	return &APIService{
-		hub:  hub,
-		opts: opts,
+		hub:    hub,
+		opts:   opts,
+		logger: opts.Logger,
 	}
 }
 
@@ -39,12 +45,39 @@ func (t *APIService) Start() {
 
 	router.HandleFunc("/device/{deviceid}/{path:[0-9a-zA-Z\\/]+}", t.httpProxyDevice)
 
-	err = http.ListenAndServeTLS(
-		t.opts.BindAddr,
-		t.opts.TLSCertPath,
-		t.opts.TLSKeyPath,
-		router,
-	)
+	t.logger.Debug("API Starting on %v", t.opts.BindAddr)
+
+	if t.opts.TLSCertPath != "" && t.opts.TLSKeyPath != "" {
+		if err := http.ListenAndServeTLS(
+			t.opts.BindAddr,
+			t.opts.TLSCertPath,
+			t.opts.TLSKeyPath,
+			router,
+		); err != nil {
+			t.logger.Error(err.Error())
+		}
+	} else {
+		certgen := &types.CertGen{
+			Host:       "localhost",
+			ValidFrom:  "Jan 1 15:04:05 2011",
+			ValidFor:   867240 * time.Hour,
+			IsCA:       false,
+			RsaBits:    4096,
+			EcdsaCurve: "P521",
+		}
+
+		certBytes, keyBytes := certgen.Generate()
+
+		cert, err := tls.X509KeyPair(certBytes, keyBytes)
+
+		if err != nil {
+			t.logger.Error(err.Error())
+		}
+
+		if err := types.ListenAndServeTLSKeyPair(t.opts.BindAddr, cert, router); err != nil {
+			t.logger.Error(err.Error())
+		}
+	}
 
 	if err != nil {
 		log.Fatal(err, string(debug.Stack()))

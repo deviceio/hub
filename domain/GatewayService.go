@@ -1,12 +1,14 @@
 package domain
 
 import (
+	"crypto/tls"
 	"fmt"
 	"net/http"
 	"sync"
 	"time"
 
 	"github.com/deviceio/shared/logging"
+	"github.com/deviceio/shared/types"
 
 	"strings"
 
@@ -56,8 +58,6 @@ func NewGatewayService(hub *Hub, opts *GatewayOptions) *GatewayService {
 // Start sets up the GatewayService and starts the http websocket listener for
 // incoming agent connections. This is a blocking call.
 func (t *GatewayService) Start() {
-	var err error
-
 	var router = mux.NewRouter()
 	var server = http.NewServeMux()
 
@@ -75,15 +75,36 @@ func (t *GatewayService) Start() {
 
 	server.Handle("/", router)
 
-	err = http.ListenAndServeTLS(
-		t.opts.BindAddr,
-		t.opts.TLSCertPath,
-		t.opts.TLSKeyPath,
-		server,
-	)
+	if t.opts.TLSCertPath != "" && t.opts.TLSKeyPath != "" {
+		if err := http.ListenAndServeTLS(
+			t.opts.BindAddr,
+			t.opts.TLSCertPath,
+			t.opts.TLSKeyPath,
+			server,
+		); err != nil {
+			t.logger.Error(err.Error())
+		}
+	} else {
+		certgen := &types.CertGen{
+			Host:       "localhost",
+			ValidFrom:  "Jan 1 15:04:05 2011",
+			ValidFor:   867240 * time.Hour,
+			IsCA:       false,
+			RsaBits:    4096,
+			EcdsaCurve: "P521",
+		}
 
-	if err != nil {
-		t.logger.Error(err.Error())
+		certBytes, keyBytes := certgen.Generate()
+
+		cert, err := tls.X509KeyPair(certBytes, keyBytes)
+
+		if err != nil {
+			t.logger.Error(err.Error())
+		}
+
+		if err := types.ListenAndServeTLSKeyPair(t.opts.BindAddr, cert, server); err != nil {
+			t.logger.Error(err.Error())
+		}
 	}
 }
 
