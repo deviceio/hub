@@ -53,9 +53,9 @@ func (t *APIService) Start() {
 		certgen := &types.CertGen{
 			Host:      "localhost",
 			ValidFrom: "Jan 1 15:04:05 2011",
-			ValidFor:  867240 * time.Hour,
-			IsCA:      true,
-			RsaBits:   4096,
+			ValidFor:  8760 * time.Hour,
+			IsCA:      false,
+			RsaBits:   2048,
 		}
 
 		var err error
