@@ -1,10 +1,11 @@
 package domain
 
 import (
-	"crypto/tls"
-	"log"
+	"bytes"
+	"io"
+	"io/ioutil"
 	"net/http"
-	"runtime/debug"
+	"os"
 	"time"
 
 	"github.com/deviceio/hub/www"
@@ -31,8 +32,6 @@ func NewAPIService(hub *Hub, opts *APIOptions) *APIService {
 
 // Start ...
 func (t *APIService) Start() {
-	var err error
-
 	//server := http.NewServeMux()
 	router := mux.NewRouter()
 
@@ -47,40 +46,56 @@ func (t *APIService) Start() {
 
 	t.logger.Debug("API Starting on %v", t.opts.BindAddr)
 
-	if t.opts.TLSCertPath != "" && t.opts.TLSKeyPath != "" {
-		if err := http.ListenAndServeTLS(
-			t.opts.BindAddr,
-			t.opts.TLSCertPath,
-			t.opts.TLSKeyPath,
-			router,
-		); err != nil {
-			t.logger.Error(err.Error())
-		}
-	} else {
+	certpath := t.opts.TLSCertPath
+	keypath := t.opts.TLSKeyPath
+
+	if t.opts.TLSCertPath == "" && t.opts.TLSKeyPath == "" {
 		certgen := &types.CertGen{
-			Host:       "localhost",
-			ValidFrom:  "Jan 1 15:04:05 2011",
-			ValidFor:   867240 * time.Hour,
-			IsCA:       false,
-			RsaBits:    4096,
-			EcdsaCurve: "P521",
+			Host:      "localhost",
+			ValidFrom: "Jan 1 15:04:05 2011",
+			ValidFor:  867240 * time.Hour,
+			IsCA:      true,
+			RsaBits:   4096,
 		}
 
-		certBytes, keyBytes := certgen.Generate()
+		var err error
+		var certBytes []byte
+		var certTemp *os.File
+		var keyBytes []byte
+		var keyTemp *os.File
 
-		cert, err := tls.X509KeyPair(certBytes, keyBytes)
+		certBytes, keyBytes = certgen.Generate()
 
-		if err != nil {
-			t.logger.Error(err.Error())
+		if certTemp, err = ioutil.TempFile("", "deviceio-hub"); err != nil {
+			t.logger.Fatal(err.Error())
 		}
+		defer certTemp.Close()
 
-		if err := types.ListenAndServeTLSKeyPair(t.opts.BindAddr, cert, router); err != nil {
-			t.logger.Error(err.Error())
+		if keyTemp, err = ioutil.TempFile("", "deviceio-hub"); err != nil {
+			t.logger.Fatal(err.Error())
 		}
+		defer keyTemp.Close()
+
+		io.Copy(certTemp, bytes.NewBuffer(certBytes))
+		io.Copy(keyTemp, bytes.NewBuffer(keyBytes))
+
+		certpath = certTemp.Name()
+		keypath = keyTemp.Name()
+
+		defer os.Remove(certpath)
+		defer os.Remove(keypath)
+
+		t.logger.Debug("Api Temp cert %v", certpath)
+		t.logger.Debug("Api Temp key %v", keypath)
 	}
 
-	if err != nil {
-		log.Fatal(err, string(debug.Stack()))
+	if err := http.ListenAndServeTLS(
+		t.opts.BindAddr,
+		certpath,
+		keypath,
+		router,
+	); err != nil {
+		t.logger.Error(err.Error())
 	}
 }
 

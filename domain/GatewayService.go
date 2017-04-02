@@ -1,9 +1,11 @@
 package domain
 
 import (
-	"crypto/tls"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -11,6 +13,8 @@ import (
 	"github.com/deviceio/shared/types"
 
 	"strings"
+
+	"bytes"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -75,36 +79,58 @@ func (t *GatewayService) Start() {
 
 	server.Handle("/", router)
 
-	if t.opts.TLSCertPath != "" && t.opts.TLSKeyPath != "" {
-		if err := http.ListenAndServeTLS(
-			t.opts.BindAddr,
-			t.opts.TLSCertPath,
-			t.opts.TLSKeyPath,
-			server,
-		); err != nil {
-			t.logger.Error(err.Error())
-		}
-	} else {
+	t.logger.Debug("Gateway Starting on %v", t.opts.BindAddr)
+
+	certpath := t.opts.TLSCertPath
+	keypath := t.opts.TLSKeyPath
+
+	if t.opts.TLSCertPath == "" && t.opts.TLSKeyPath == "" {
 		certgen := &types.CertGen{
-			Host:       "localhost",
-			ValidFrom:  "Jan 1 15:04:05 2011",
-			ValidFor:   867240 * time.Hour,
-			IsCA:       false,
-			RsaBits:    4096,
-			EcdsaCurve: "P521",
+			Host:      "localhost",
+			ValidFrom: "Jan 1 15:04:05 2011",
+			ValidFor:  867240 * time.Hour,
+			IsCA:      true,
+			RsaBits:   4096,
 		}
 
-		certBytes, keyBytes := certgen.Generate()
+		var err error
+		var certBytes []byte
+		var certTemp *os.File
+		var keyBytes []byte
+		var keyTemp *os.File
 
-		cert, err := tls.X509KeyPair(certBytes, keyBytes)
+		certBytes, keyBytes = certgen.Generate()
 
-		if err != nil {
-			t.logger.Error(err.Error())
+		if certTemp, err = ioutil.TempFile("", "deviceio-hub"); err != nil {
+			t.logger.Fatal(err.Error())
 		}
+		defer certTemp.Close()
 
-		if err := types.ListenAndServeTLSKeyPair(t.opts.BindAddr, cert, server); err != nil {
-			t.logger.Error(err.Error())
+		if keyTemp, err = ioutil.TempFile("", "deviceio-hub"); err != nil {
+			t.logger.Fatal(err.Error())
 		}
+		defer keyTemp.Close()
+
+		io.Copy(certTemp, bytes.NewBuffer(certBytes))
+		io.Copy(keyTemp, bytes.NewBuffer(keyBytes))
+
+		certpath = certTemp.Name()
+		keypath = keyTemp.Name()
+
+		defer os.Remove(certpath)
+		defer os.Remove(keypath)
+
+		t.logger.Debug("Gateway Temp cert %v", certpath)
+		t.logger.Debug("Gateway Temp key %v", keypath)
+	}
+
+	if err := http.ListenAndServeTLS(
+		t.opts.BindAddr,
+		certpath,
+		keypath,
+		server,
+	); err != nil {
+		t.logger.Error(err.Error())
 	}
 }
 
