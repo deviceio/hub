@@ -1,40 +1,42 @@
-<aside class="notice">
-This is alpha grade software and is not suitable for production use. Breaking changes are frequent as we march towards 1.0 and our <a href="">1.0 Compatability Promise</a>
-</aside>
-
 # Deviceio Hub
 
-The Deviceio Hub forms the heart of the Deviceio Real-Time orchestration platform. The Hub listens for incoming Deviceio Agent connections and exposes the Agent APIs via HTTP endpoints available from the Hub. The Deviceio Hub provides a centralized location to conduct real-time system orchestration of multiple connected devices.
-
-<!-- TOC -->
-
-- [Deviceio Hub](#deviceio-hub)
-- [Deployment](#deployment)
-    - [Docker - Quick Start for Testing and Evaulation](#docker---quick-start-for-testing-and-evaulation)
-    - [Docker - Swarm Cluster](#docker---swarm-cluster)
-
-<!-- /TOC -->
+The Deviceio Hub provides a centralized location to conduct real-time system orchestration of multiple connected devices. The Hub listens for incoming Deviceio Agent connections and exposes Agent APIs via HTTP endpoints available from the Hub. 
 
 # Deployment
 
-## Docker - Quick Start for Testing and Evaulation
+## Docker - Quick Start
 
-In this section we are going to deploy the hub for use with testing and evaluation. This method does not address scalability or security concerns.
-
-Ensure Docker is installed (and in linux mode if using docker for windows 10)
-
-From your cli, run the following docker command to start a basic rethinkdb database instance
+Start a rethinkdb instance
 
 ```bash
 docker run -d --name deviceio-test-db rethinkdb
 ```
 
-Run the following docker command to start a basic Deviceio Hub instance
+Wait for the rethinkdb instance to startup by querying the container logs until you see `Server ready`
 
 ```bash
-docker run -d --name deviceio-test-hub -p 4431:443 -p 8975:8975 --link deviceio-test-db:db deviceio/hub hub start --dbhost db
+docker logs deviceio-test-db
 ```
 
-## Docker - Swarm Cluster
+Start a Deviceio Hub instance and link to our rethinkdb instance
 
-TBD
+```bash
+docker run -d --name deviceio-test-hub -p 4431:4431 -p 8975:8975 --link deviceio-test-db:db deviceio/hub --db-host db
+```
+
+Test connectivity to the hub api port
+
+```bash
+curl -k -v https://127.0.0.1:4431/v1/status
+```
+
+Test connectivity to the hub gateway port
+
+```bash
+curl -k -v https://127.0.0.1:8975/v1/status
+```
+
+Next:
+
+* Install and join a Deviceio Agent to your hub instance https://github.com/deviceio/agent
+* Install and interact with the hub with the CLI tools https://github.com/deviceio/cli

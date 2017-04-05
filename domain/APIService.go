@@ -35,7 +35,7 @@ func (t *APIService) Start() {
 	//server := http.NewServeMux()
 	router := mux.NewRouter()
 
-	router.HandleFunc("/status", t.status).Methods("GET")
+	router.HandleFunc("/v1/status", t.httpGetV1Status).Methods("GET")
 	router.PathPrefix("/admin/").Handler(http.StripPrefix("/admin/", http.FileServer(www.EmbedHttpFS)))
 
 	//server.Handle("/admin/", http.StripPrefix("/admin/", http.FileServer(www.EmbedFS)))
@@ -107,7 +107,7 @@ func (t *APIService) auth(next http.Handler) http.Handler {
 }
 
 // httpGetStatus GET /v1/status
-func (t *APIService) status(rw http.ResponseWriter, r *http.Request) {
+func (t *APIService) httpGetV1Status(rw http.ResponseWriter, r *http.Request) {
 	rw.Write([]byte("OK"))
 }
 

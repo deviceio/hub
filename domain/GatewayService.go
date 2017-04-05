@@ -76,6 +76,7 @@ func (t *GatewayService) Start() {
 	}
 
 	router.HandleFunc("/v1/connect", t.httpGetV1Connect).Methods("GET")
+	router.HandleFunc("/v1/status", t.httpGetV1Status).Methods("GET")
 
 	server.Handle("/", router)
 
@@ -160,6 +161,11 @@ func (t *GatewayService) FindConnectionForDevice(deviceid string) (*GatewayConne
 	}
 
 	return nil, ErrGatewayDeviceDoesNotExist
+}
+
+// httpGetStatus GET /v1/status
+func (t *GatewayService) httpGetV1Status(rw http.ResponseWriter, r *http.Request) {
+	rw.Write([]byte("OK"))
 }
 
 // httpGetV1Connect is the gateway http endpoint that accepts new device connections.
