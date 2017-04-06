@@ -91,7 +91,7 @@ func (t *GatewayService) Start() {
 			ValidFrom: "Jan 1 15:04:05 2011",
 			ValidFor:  8760 * time.Hour,
 			IsCA:      false,
-			RsaBits:   2048,
+			RsaBits:   4096,
 		}
 
 		var err error
