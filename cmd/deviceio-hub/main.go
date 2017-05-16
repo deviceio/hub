@@ -2,13 +2,17 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
+	"net/http"
 	"time"
 
-	"github.com/deviceio/hub/domain"
-	"github.com/deviceio/hub/infra"
-	"github.com/deviceio/hub/infra/data"
-	"github.com/deviceio/shared/logging"
+	"github.com/Sirupsen/logrus"
+	"github.com/deviceio/hub/api"
+	"github.com/deviceio/hub/cluster"
+	"github.com/deviceio/hub/db"
+	"github.com/deviceio/hub/gateway"
+	homedir "github.com/mitchellh/go-homedir"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -25,7 +29,7 @@ func main() {
 	startCmd = &cobra.Command{
 		Use:   "start",
 		Short: "starts the hub",
-		Long:  `starts the api and gateway components of the hub`,
+		Long:  `starts the api, cluster and gateway components of the hub`,
 		Run: func(cmd *cobra.Command, args []string) {
 			start(cmd)
 		},
@@ -39,39 +43,30 @@ func main() {
 	startCmd.Flags().String("api-bind-port", "4431", "port to bind the api to")
 	startCmd.Flags().String("api-tls-cert-path", "", "path to the api tls certificate to use. If blank an auto-generated cert will be used")
 	startCmd.Flags().String("api-tls-key-path", "", "path to the api tls key to use. If blank an auto-generated cert will be used")
+	startCmd.Flags().String("cluster-bind-addr", "", "ip or hostname to bind to the cluster instance")
+	startCmd.Flags().String("cluster-bind-port", "5531", "port to bind to the cluster instance")
+	startCmd.Flags().String("cluster-tls-cert-path", "", "path to the cluster tls certificate to use. If blank an auto-generated cert will be used")
+	startCmd.Flags().String("cluster-tls-key-path", "", "path to the cluster tls key to use. If blank an auto-generated cert will be used")
 	startCmd.Flags().String("gateway-bind-addr", "", "ip or hostname to bind the gateway to. Defaults to 0.0.0.0")
 	startCmd.Flags().String("gateway-bind-port", "8975", "port to bind the gateway to")
 	startCmd.Flags().String("gateway-tls-cert-path", "", "path to the gateway tls certificate to use. If blank an auto-generated cert will be used")
 	startCmd.Flags().String("gateway-tls-key-path", "", "path to the gateway tls key to use. If blank an auto-generated cert will be used")
 
-	setupCmd = &cobra.Command{
-		Use:   "setup",
-		Short: "sets up initial hub configurations",
-		Long: `sets up initial hub configuration including the initial admin password, hmac keys and permitted ip addresses. 
-		This only needs to be called ONCE during deployment of a new hub cluster.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			setup(cmd)
-		},
-	}
-
-	setupCmd.Flags().String("db-host", "127.0.0.1", "The rethinkdb client host to connect to")
-	setupCmd.Flags().String("db-name", "DeviceioHub", "The name of the rethinkdb database name to use")
-	setupCmd.Flags().String("db-user", "", "The username to use when connecting to rethinkdb")
-	setupCmd.Flags().String("db-pass", "", "The password to use when connecting to rethinkdb")
-	setupCmd.Flags().String("user-name", "admin", "The initial cluster admin username")
-	setupCmd.Flags().String("user-ip", "127.0.0.1/32", "The initial cluster admin permitted ip addresses")
-	setupCmd.Flags().String("hmac-key", "", "The initial cluster admin hmac key")
-	setupCmd.Flags().String("hmac-secret", "", "The initial cluster admin hmac secret")
-	setupCmd.Flags().String("hmac-hash-func", "sha-256", "The hmac hash function to use for the initial user. options: sha-256")
-
 	rootCmd = &cobra.Command{}
-	rootCmd.AddCommand(startCmd, setupCmd)
+	rootCmd.AddCommand(startCmd)
+
 	if err := rootCmd.Execute(); err != nil {
 		panic("Error executing cli: " + err.Error())
 	}
 }
 
 func start(cmd *cobra.Command) {
+	homedir, err := homedir.Dir()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	viper.BindPFlag("db.host", cmd.Flags().Lookup("db-host"))
 	viper.BindPFlag("db.name", cmd.Flags().Lookup("db-name"))
 	viper.BindPFlag("db.user", cmd.Flags().Lookup("db-user"))
@@ -80,6 +75,10 @@ func start(cmd *cobra.Command) {
 	viper.BindPFlag("api.bind_port", cmd.Flags().Lookup("api-bind-port"))
 	viper.BindPFlag("api.tls_cert_path", cmd.Flags().Lookup("api-tls-cert-path"))
 	viper.BindPFlag("api.tls_key_path", cmd.Flags().Lookup("api-tls-key-path"))
+	viper.BindPFlag("cluster.bind_addr", cmd.Flags().Lookup("cluster-bind-addr"))
+	viper.BindPFlag("cluster.bind_port", cmd.Flags().Lookup("cluster-bind-port"))
+	viper.BindPFlag("cluster.tls_cert_path", cmd.Flags().Lookup("cluster-tls-cert-path"))
+	viper.BindPFlag("cluster.tls_key_path", cmd.Flags().Lookup("cluster-tls-key-path"))
 	viper.BindPFlag("gateway.bind_addr", cmd.Flags().Lookup("gateway-bind-addr"))
 	viper.BindPFlag("gateway.bind_port", cmd.Flags().Lookup("gateway-bind-port"))
 	viper.BindPFlag("gateway.tls_cert_path", cmd.Flags().Lookup("gateway-tls-cert-path"))
@@ -87,7 +86,8 @@ func start(cmd *cobra.Command) {
 
 	viper.SetEnvPrefix("DEVICEIO_HUB_")
 	viper.SetConfigName("config")
-	viper.AddConfigPath("$HOME/.deviceio/hub")
+	viper.AddConfigPath(fmt.Sprintf("%v/.deviceio/hub/", homedir))
+	viper.AddConfigPath("$HOME/.deviceio/hub/")
 	viper.AddConfigPath("/etc/deviceio/hub/")
 	viper.AddConfigPath("/opt/deviceio/hub/")
 	viper.AddConfigPath("c:/PROGRA~1/deviceio/hub/")
@@ -102,6 +102,10 @@ func start(cmd *cobra.Command) {
 	viper.SetDefault("api.bind_port", "4431")
 	viper.SetDefault("api.tls_cert_path", "")
 	viper.SetDefault("api.tls_key_path", "")
+	viper.SetDefault("cluster.bind_addr", "")
+	viper.SetDefault("cluster.bind_port", "5531")
+	viper.SetDefault("cluster.tls_cert_path", "")
+	viper.SetDefault("cluster.tls_key_path", "")
 	viper.SetDefault("gateway.bind_addr", "")
 	viper.SetDefault("gateway.bind_port", "8975")
 	viper.SetDefault("gateway.tls_cert_path", "")
@@ -111,54 +115,47 @@ func start(cmd *cobra.Command) {
 		panic(fmt.Errorf("Fatal error config file: %s \n", err))
 	}
 
-	data.Connect(&data.Options{
+	logrus.WithField("config", viper.ConfigFileUsed()).Println("configuration loaded")
+
+	db.Connect(&db.Options{
 		DBName: viper.GetString("db.name"),
 		DBHost: viper.GetString("db.host"),
 		DBUser: viper.GetString("db.user"),
 		DBPass: viper.GetString("db.pass"),
 	})
-	data.Migrate()
+	db.Migrate()
 
-	hub := &domain.Hub{}
-
-	api := domain.NewAPIService(hub, &domain.APIOptions{
-		BindAddr: fmt.Sprintf(
-			"%v:%v",
-			viper.GetString("api.bind_addr"),
-			viper.GetString("api.bind_port"),
-		),
-		Logger:      &logging.DefaultLogger{},
-		TLSCertPath: viper.GetString("api.tls_cert_path"),
-		TLSKeyPath:  viper.GetString("api.tls_key_path"),
-	})
-
-	cluster := domain.NewClusterService(hub, &domain.ClusterOptions{
-		Logger:        &logging.DefaultLogger{},
-		DeviceQuery:   infra.NewClusterDeviceQuery(&logging.DefaultLogger{}),
-		DeviceCommand: infra.NewClusterDeviceCommand(&logging.DefaultLogger{}),
-	})
-
-	gateway := domain.NewGatewayService(hub, &domain.GatewayOptions{
-		BindAddr: fmt.Sprintf(
-			"%v:%v",
-			viper.GetString("gateway.bind_addr"),
-			viper.GetString("gateway.bind_port"),
-		),
+	gatewayService := &gateway.Service{
+		BindAddr:    fmt.Sprintf("%v:%v", viper.GetString("gateway.bind_addr"), viper.GetString("gateway.bind_port")),
 		TLSCertPath: viper.GetString("gateway.tls_cert_path"),
 		TLSKeyPath:  viper.GetString("gateway.tls_key_path"),
-		Logger:      &logging.DefaultLogger{},
+	}
+
+	clusterService := cluster.NewService(&cluster.Config{
+		BindAddr:    fmt.Sprintf("%v:%v", viper.GetString("cluster.bind_addr"), viper.GetString("cluster.bind_port")),
+		TLSCertPath: viper.GetString("cluster.tls_cert_path"),
+		TLSKeyPath:  viper.GetString("cluster.tls_key_path"),
+		LocalDeviceProxyFunc: func(deviceid string, path string, rw http.ResponseWriter, r *http.Request) {
+			gatewayService.ProxyHTTPRequest(deviceid, path, rw, r)
+		},
 	})
 
-	hub.API = api
-	hub.Cluster = cluster
-	hub.Gateway = gateway
+	apiService := &api.Service{
+		BindAddr:    fmt.Sprintf("%v:%v", viper.GetString("api.bind_addr"), viper.GetString("api.bind_port")),
+		TLSCertPath: viper.GetString("api.tls_cert_path"),
+		TLSKeyPath:  viper.GetString("api.tls_key_path"),
+		Controllers: []api.Controller{
+			&api.UserController{},
+			&api.StatusController{},
+			&api.DeviceController{
+				ClusterService: clusterService,
+			},
+		},
+	}
 
-	go hub.API.Start()
-	go hub.Gateway.Start()
+	go apiService.Start()
+	go clusterService.Start()
+	go gatewayService.Start()
 
 	<-make(chan bool)
-}
-
-func setup(cmd *cobra.Command) {
-
 }

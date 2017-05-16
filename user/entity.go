@@ -1,6 +1,6 @@
-package domain
+package user
 
-type User struct {
+type Entity struct {
 	ID         string
 	Username   string
 	HmacKey    string

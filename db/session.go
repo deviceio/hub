@@ -1,4 +1,4 @@
-package data
+package db
 
 import (
 	r "gopkg.in/gorethink/gorethink.v2"

@@ -1,8 +1,7 @@
-package data
+package db
 
 import (
-	"log"
-
+	"github.com/Sirupsen/logrus"
 	"github.com/deviceio/shared/try"
 	"github.com/deviceio/shared/types"
 
@@ -22,25 +21,23 @@ func Migrate() {
 
 		c.All(&dblist)
 
-		log.Println("Available Databases", dblist)
+		logrus.Println("Available Databases", dblist)
 
 		if !dblist.Contains(Database) {
-			log.Println("Creating Database", Database)
+			logrus.Println("Creating Database", Database)
 			r.DBCreate(Database).RunWrite(Session)
 		}
 
 		return nil
 	}, func(e error, stack string) {
-		log.Fatal(e, stack)
+		logrus.Fatal(e, stack)
 	})
 
 	try.Call(func() error {
 		tables := &types.StringSlice{
-			"Device",
-			"Hub",
-			"User",
-			"ApiKey",
-			"Config",
+			string(DeviceTable),
+			string(UserTable),
+			string(MemberTable),
 		}
 
 		c, err := r.TableList().Run(Session)
@@ -53,17 +50,17 @@ func Migrate() {
 
 		c.All(&tablelist)
 
-		log.Println("Available Tables", tablelist)
+		logrus.Println("Available Tables", tablelist)
 
 		for _, table := range tables.ToSlice() {
 			if !tablelist.Contains(table) {
-				log.Println("Creating Table", table)
+				logrus.Println("Creating Table", table)
 				r.TableCreate(table).RunWrite(Session)
 			}
 		}
 
 		return nil
 	}, func(e error, stack string) {
-		log.Fatal(e, stack)
+		logrus.Fatal(e, stack)
 	})
 }

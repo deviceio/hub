@@ -1,4 +1,4 @@
-package data
+package db
 
 type Options struct {
 	DBName string
