@@ -2,7 +2,9 @@ package cluster
 
 import (
 	"bytes"
+	"crypto/rand"
 	"crypto/sha512"
+	"encoding/base64"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -19,10 +21,11 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
+	"golang.org/x/crypto/ed25519"
 )
 
 type Service interface {
-	AuthenticateTOTPRequest(r *http.Request) (failure error)
+	AuthenticateAPIRequest(r *http.Request) (failure error)
 	ProxyDeviceRequest(deviceid string, path string, rw http.ResponseWriter, r *http.Request)
 	Start()
 }
@@ -43,7 +46,7 @@ type service struct {
 	deviceCacheMu *sync.Mutex
 }
 
-func (t *service) AuthenticateTOTPRequest(r *http.Request) error {
+func (t *service) AuthenticateAPIRequest(r *http.Request) error {
 	authheader := r.Header.Get("Authorization")
 
 	if authheader == "" {
@@ -52,7 +55,7 @@ func (t *service) AuthenticateTOTPRequest(r *http.Request) error {
 		}
 	}
 
-	authHeaderTypeAndValue := strings.Split(authheader, " ")
+	authHeaderTypeAndValue := strings.Split(strings.TrimSpace(authheader), " ")
 
 	if len(authHeaderTypeAndValue) != 2 {
 		return &AuthenticationFailed{
@@ -60,23 +63,28 @@ func (t *service) AuthenticateTOTPRequest(r *http.Request) error {
 		}
 	}
 
-	if authHeaderTypeAndValue[0] != "totp" {
+	if authHeaderTypeAndValue[0] != "DEVICEIO-HUB-AUTH" {
 		return &AuthenticationFailed{
-			Reason: "authorization header <type> must be 'totp'",
+			Reason: "authorization header <type> must be 'DEVICEIO-HUB-AUTH'",
 		}
 	}
 
 	authHeaderValues := strings.Split(authHeaderTypeAndValue[1], ":")
 
-	if len(authHeaderValues) != 3 {
+	if len(authHeaderValues) != 2 {
 		return &AuthenticationFailed{
-			Reason: "authorization value does not have required format <user_id>:<user_password>:<user_passcode>",
+			Reason: "authorization value does not have required format <user_id>:<ed25519_signature_base64>",
 		}
 	}
 
 	suppliedID := authHeaderValues[0]
-	suppliedPassword := authHeaderValues[1]
-	suppliedPasscode := authHeaderValues[2]
+	suppliedSignatrue, err := base64.StdEncoding.DecodeString(authHeaderValues[1])
+
+	if err != nil {
+		return &AuthenticationFailed{
+			Reason: err.Error(),
+		}
+	}
 
 	t.userCacheMu.Lock()
 	var user *User
@@ -94,18 +102,39 @@ func (t *service) AuthenticateTOTPRequest(r *http.Request) error {
 		}
 	}
 
-	hash := sha512.New()
-	hash.Write([]byte(user.PasswordSalt + suppliedPassword))
+	passcode, err := totp.GenerateCode(string(user.TOTPSecret), time.Now())
 
-	if string(hash.Sum(nil)) != string(user.PasswordHash) {
+	if err != nil {
 		return &AuthenticationFailed{
-			Reason: "user password hash mismatch",
+			Reason: err.Error(),
 		}
 	}
 
-	if valid := totp.Validate(suppliedPasscode, user.TOTPSecret); !valid {
+	message := strings.Join(
+		[]string{
+			suppliedID,
+			passcode,
+			r.Method,
+			r.Host,
+			r.URL.Path,
+			r.URL.RawQuery,
+			r.Header.Get("Content-Type"),
+		},
+		"\r\n",
+	)
+
+	hash := sha512.New()
+	hash.Write([]byte(message))
+
+	sigok := ed25519.Verify(
+		ed25519.PublicKey(user.ED25519PublicKey),
+		hash.Sum(nil),
+		suppliedSignatrue,
+	)
+
+	if !sigok {
 		return &AuthenticationFailed{
-			Reason: "totp passcode failed validation",
+			Reason: "signature mismatch",
 		}
 	}
 
@@ -183,19 +212,27 @@ func (t *service) makeDefaultAdmin() {
 		Issuer:      "deviceio-hub",
 		AccountName: "admin@localhost",
 	})
+
 	adminPasswordPlain, _ := uuid.NewRandom()
 	adminPasswordSalt, _ := uuid.NewRandom()
 
 	hash := sha512.New()
 	hash.Write([]byte(adminPasswordSalt.String() + adminPasswordPlain.String()))
 
+	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
+
+	if err != nil {
+		logrus.WithField("error", err.Error()).Fatal("Error generating ED255519 keypair")
+	}
+
 	user := &User{
-		Login:        "admin",
-		Admin:        true,
-		Email:        "admin@localhost",
-		TOTPSecret:   adminTOTPKey.Secret(),
-		PasswordHash: hash.Sum(nil),
-		PasswordSalt: adminPasswordSalt.String(),
+		Login:            "admin",
+		Admin:            true,
+		Email:            "admin@localhost",
+		TOTPSecret:       []byte(adminTOTPKey.Secret()),
+		PasswordHash:     hash.Sum(nil),
+		PasswordSalt:     adminPasswordSalt.String(),
+		ED25519PublicKey: pubKey,
 	}
 
 	resp, err := db.Table(db.UserTable).Insert(user).RunWrite(db.Session)
@@ -205,10 +242,11 @@ func (t *service) makeDefaultAdmin() {
 	}
 
 	logrus.WithFields(logrus.Fields{
-		"id":       resp.GeneratedKeys[0],
-		"login":    user.Login,
-		"password": adminPasswordPlain,
-		"secret":   user.TOTPSecret,
+		"id":          resp.GeneratedKeys[0],
+		"login":       user.Login,
+		"password":    adminPasswordPlain,
+		"totp_secret": string(user.TOTPSecret),
+		"private_key": base64.StdEncoding.EncodeToString(privKey),
 	}).Info("initial admin credentials")
 }
 

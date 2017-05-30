@@ -28,18 +28,29 @@ func (t *DeviceController) httpGetDevices(rw http.ResponseWriter, r *http.Reques
 func (t *DeviceController) httpProxyDevice(rw http.ResponseWriter, r *http.Request) {
 	var err error
 
-	if err = t.ClusterService.AuthenticateTOTPRequest(r); err != nil {
+	if err = t.ClusterService.AuthenticateAPIRequest(r); err != nil {
 		rw.WriteHeader(http.StatusForbidden)
 		rw.Write([]byte(""))
+
 		logrus.WithFields(logrus.Fields{
 			"remoteAddr":    r.RemoteAddr,
 			"authorization": r.Header.Get("Authorization"),
 		}).Error(err.Error())
+
 		return
 	}
 
 	vars := mux.Vars(r)
 
-	r.Header.Add("X-Deviceio-Parent-Path", fmt.Sprintf("/device/%v", vars["deviceid"]))
-	t.ClusterService.ProxyDeviceRequest(vars["deviceid"], vars["path"], rw, r)
+	r.Header.Add(
+		"X-Deviceio-Parent-Path",
+		fmt.Sprintf("/device/%v", vars["deviceid"]),
+	)
+
+	t.ClusterService.ProxyDeviceRequest(
+		vars["deviceid"],
+		vars["path"],
+		rw,
+		r,
+	)
 }
