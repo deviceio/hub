@@ -11,6 +11,7 @@ func ExampleKeyValue() {
 	m[10] = true
 
 	fmt.Println(From(m).Results())
+
 	// Output:
 	// [{10 true}]
 }
@@ -25,6 +26,7 @@ func ExampleKeyValue_second() {
 		ToMap(&m)
 
 	fmt.Println(m)
+
 	// Output:
 	// map[10:true]
 }
@@ -85,6 +87,7 @@ func ExampleQuery() {
 	for item, ok := next(); ok; item, ok = next() {
 		fmt.Println(item)
 	}
+
 	// Output:
 	// 1
 	// 2
@@ -107,6 +110,7 @@ func ExampleQuery_Aggregate() {
 		)
 
 	fmt.Println(longestName)
+
 	// Output:
 	// passionfruit
 }
@@ -203,6 +207,7 @@ func ExampleOrderedQuery_DistinctBy() {
 	for _, product := range noduplicates {
 		fmt.Printf("%s %d\n", product.Name, product.Code)
 	}
+
 	// Output:
 	// apple 9
 	// lemon 12
@@ -229,6 +234,7 @@ func ExampleOrderedQuery_ThenBy() {
 	for _, fruit := range query {
 		fmt.Println(fruit)
 	}
+
 	// Output:
 	// apple
 	// grape
@@ -265,6 +271,7 @@ func ExampleQuery_All() {
 		)
 
 	fmt.Printf("All pet names start with 'B'? %t", allStartWithB)
+
 	// Output:
 	//
 	//  All pet names start with 'B'? false
@@ -278,6 +285,7 @@ func ExampleQuery_Any() {
 	hasElements := From(numbers).Any()
 
 	fmt.Printf("Are there any element in the list? %t", hasElements)
+
 	// Output:
 	// Are there any element in the list? true
 }
@@ -307,6 +315,7 @@ func ExampleQuery_AnyWith() {
 		)
 
 	fmt.Printf("Are there any unvaccinated animals over age one? %t", unvaccinated)
+
 	// Output:
 	//
 	// Are there any unvaccinated animals over age one? true
@@ -322,6 +331,7 @@ func ExampleQuery_Append() {
 	last := q.Last()
 
 	fmt.Println(last)
+
 	// Output:
 	// 5
 }
@@ -333,6 +343,7 @@ func ExampleQuery_Average() {
 	average := From(grades).Average()
 
 	fmt.Println(average)
+
 	// Output:
 	// 77.6
 }
@@ -344,6 +355,7 @@ func ExampleQuery_Count() {
 	numberOfFruits := From(fruits).Count()
 
 	fmt.Println(numberOfFruits)
+
 	// Output:
 	// 6
 }
@@ -356,6 +368,7 @@ func ExampleQuery_Contains() {
 	has5 := From(slice).Contains(5)
 
 	fmt.Printf("Does the slice contains 5? %t", has5)
+
 	// Output:
 	// Does the slice contains 5? true
 }
@@ -371,6 +384,7 @@ func ExampleQuery_CountWith() {
 		)
 
 	fmt.Println(evenCount)
+
 	// Output:
 	// 6
 }
@@ -386,6 +400,7 @@ func ExampleQuery_Distinct() {
 		ToSlice(&distinctAges)
 
 	fmt.Println(distinctAges)
+
 	// Output:
 	// [21 46 55 17]
 }
@@ -416,6 +431,7 @@ func ExampleQuery_DistinctBy() {
 	for _, product := range noduplicates {
 		fmt.Printf("%s %d\n", product.Name, product.Code)
 	}
+
 	// Output:
 	// orange 4
 	// apple 9
@@ -438,6 +454,7 @@ func ExampleQuery_Except() {
 	for _, number := range onlyInFirstSet {
 		fmt.Println(number)
 	}
+
 	// Output:
 	//2
 	//2.1
@@ -478,6 +495,7 @@ func ExampleQuery_ExceptBy() {
 	for _, product := range except {
 		fmt.Printf("%s %d\n", product.Name, product.Code)
 	}
+
 	// Output:
 	// orange 4
 	// lemon 12
@@ -492,6 +510,7 @@ func ExampleQuery_First() {
 	first := From(numbers).First()
 
 	fmt.Println(first)
+
 	// Output:
 	// 9
 
@@ -508,6 +527,7 @@ func ExampleQuery_FirstWith() {
 		)
 
 	fmt.Println(first)
+
 	// Output:
 	// 92
 
@@ -527,6 +547,7 @@ func ExampleQuery_Intersect() {
 	for _, id := range both {
 		fmt.Println(id)
 	}
+
 	// Output:
 	// 26
 	// 30
@@ -561,6 +582,7 @@ func ExampleQuery_IntersectBy() {
 	for _, p := range duplicates {
 		fmt.Println(p.Name, "", p.Code)
 	}
+
 	// Output:
 	// apple  9
 
@@ -682,6 +704,7 @@ func ExampleQuery_Concat() {
 		Concat(From([]int{4, 5, 6}))
 
 	fmt.Println(q.Results())
+
 	// Output:
 	// [1 2 3 4 5 6]
 }
@@ -696,6 +719,7 @@ func ExampleQuery_GroupBy() {
 	fmt.Println(q.OrderBy(func(i interface{}) interface{} {
 		return i.(Group).Key
 	}).Results())
+
 	// Output:
 	// [{0 [2 4 6 8]} {1 [1 3 5 7 9]}]
 }
@@ -721,6 +745,7 @@ func ExampleQuery_GroupJoin() {
 		)
 
 	fmt.Println(q.Results())
+
 	// Output:
 	// [{a [apple apricot]} {b [banana]} {c [cherry clementine]}]
 }
@@ -746,6 +771,7 @@ func ExampleQuery_Join() {
 		)
 
 	fmt.Println(q.Results())
+
 	// Output:
 	// [{5 apple} {6 banana} {6 cherry} {7 apricot} {10 clementine}]
 }
@@ -762,6 +788,7 @@ func ExampleQuery_OrderBy() {
 		)
 
 	fmt.Println(q.Results())
+
 	// Output:
 	// [10 8 6 4 2 9 7 5 3 1]
 }
@@ -775,6 +802,7 @@ func ExampleQuery_Prepend() {
 	first := q.First()
 
 	fmt.Println(first)
+
 	// Output:
 	// 1
 }
@@ -790,6 +818,7 @@ func ExampleQuery_Reverse() {
 		ToSlice(&output)
 
 	fmt.Println(string(output))
+
 	// Output:
 	// elppa
 }
@@ -819,6 +848,7 @@ func ExampleQuery_SelectMany() {
 		)
 
 	fmt.Println(q.Results())
+
 	// Output:
 	// [1 2 3 4 5 6 7]
 }
@@ -887,6 +917,7 @@ func ExampleQuery_SelectManyByIndexed() {
 	for _, result := range results {
 		fmt.Println(result)
 	}
+
 	// Output:
 	// Pet: 0 - Daisy, Owner: Hedlund, Magnus
 	// Pet: 1 - Barley, Owner: Adams, Terry
@@ -941,6 +972,7 @@ func ExampleQuery_SelectManyIndexed() {
 	for _, result := range results {
 		fmt.Println(result)
 	}
+
 	// Output:
 	// File:[1] - file1.log => line: 1 - INFO: 2013/11/05 18:11:01 main.go:44: Special Information
 	// File:[1] - file1.log => line: 2 - WARNING: 2013/11/05 18:11:01 main.go:45: There is something you need to know about
@@ -991,6 +1023,7 @@ func ExampleQuery_SelectManyBy() {
 	for _, result := range results {
 		fmt.Println(result)
 	}
+
 	// Output:
 	// Owner: Hedlund, Magnus, Pet: Daisy
 	// Owner: Adams, Terry, Pet: Barley
@@ -1023,6 +1056,7 @@ func ExampleQuery_SequenceEqual() {
 	equal := From(pets1).SequenceEqual(From(pets2))
 
 	fmt.Printf("Are the lists equals? %t", equal)
+
 	// Output:
 	// Are the lists equals? true
 }
@@ -1138,6 +1172,7 @@ func ExampleQuery_SumFloats() {
 	sum := From(numbers).SumFloats()
 
 	fmt.Printf("The sum of the numbers is %f.", sum)
+
 	// Output:
 	// The sum of the numbers is 635.130000.
 
@@ -1151,6 +1186,7 @@ func ExampleQuery_SumInts() {
 	sum := From(numbers).SumInts()
 
 	fmt.Printf("The sum of the numbers is %d.", sum)
+
 	// Output:
 	// The sum of the numbers is 633.
 
@@ -1164,6 +1200,7 @@ func ExampleQuery_SumUInts() {
 	sum := From(numbers).SumUInts()
 
 	fmt.Printf("The sum of the numbers is %d.", sum)
+
 	// Output:
 	// The sum of the numbers is 633.
 
@@ -1183,6 +1220,7 @@ func ExampleQuery_Take() {
 		ToSlice(&topThreeGrades)
 
 	fmt.Printf("The top three grades are: %v", topThreeGrades)
+
 	// Output:
 	// The top three grades are: [98 92 85]
 
@@ -1201,6 +1239,7 @@ func ExampleQuery_TakeWhile() {
 		ToSlice(&query)
 
 	fmt.Println(query)
+
 	// Output:
 	// [apple banana mango]
 }
@@ -1221,6 +1260,7 @@ func ExampleQuery_TakeWhileIndexed() {
 		ToSlice(&query)
 
 	fmt.Println(query)
+
 	// Output:
 	// [apple passionfruit banana mango orange blueberry]
 }
@@ -1237,6 +1277,7 @@ func ExampleQuery_ToChannel() {
 	for i := range c {
 		fmt.Println(i)
 	}
+
 	// Output:
 	// 10
 	// 10
@@ -1267,6 +1308,7 @@ func ExampleQuery_ToMap() {
 	fmt.Println(map1[4])
 	fmt.Println(map1[9])
 	fmt.Println(map1[12])
+
 	// Output:
 	// orange
 	// apple
@@ -1290,6 +1332,7 @@ func ExampleQuery_ToMapBy() {
 		)
 
 	fmt.Println(result)
+
 	// Output:
 	// map[1:true]
 }
@@ -1300,6 +1343,7 @@ func ExampleQuery_ToSlice() {
 	Range(1, 10).ToSlice(&result)
 
 	fmt.Println(result)
+
 	// Output:
 	// [1 2 3 4 5 6 7 8 9 10]
 }
@@ -1310,6 +1354,7 @@ func ExampleQuery_Union() {
 	q := Range(1, 10).Union(Range(6, 10))
 
 	fmt.Println(q.Results())
+
 	// Output:
 	// [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
 }
@@ -1327,6 +1372,7 @@ func ExampleQuery_Where() {
 		ToSlice(&query)
 
 	fmt.Println(query)
+
 	// Output:
 	// [passionfruit blueberry strawberry]
 }
@@ -1344,6 +1390,7 @@ func ExampleQuery_WhereIndexed() {
 		ToSlice(&query)
 
 	fmt.Println(query)
+
 	// Output:
 	// [0 15 40]
 }
@@ -1360,6 +1407,7 @@ func ExampleQuery_Zip() {
 		)
 
 	fmt.Println(q.Results())
+
 	// Output:
 	// [[1 one] [2 two] [3 three]]
 }
@@ -1445,6 +1493,7 @@ func ExampleQuery_AggregateT() {
 	)
 
 	fmt.Println(reversed)
+
 	// Output:
 	// dog lazy the over jumps fox brown quick the
 }
@@ -1466,6 +1515,7 @@ func ExampleQuery_AggregateWithSeedT() {
 		)
 
 	fmt.Printf("The fruit with the longest name is %s.", longestName)
+
 	// Output:
 	// The fruit with the longest name is passionfruit.
 
@@ -1528,6 +1578,7 @@ func ExampleQuery_AllT() {
 	for _, student := range approvedStudents {
 		fmt.Println(student.Name)
 	}
+
 	// Output:
 	// Hugo
 	// Michael
@@ -1565,6 +1616,7 @@ func ExampleQuery_AnyWithT() {
 	for _, student := range studentsWithAnyMarkLt70 {
 		fmt.Println(student.Name)
 	}
+
 	// Output:
 	// Rick
 	// Fadi
@@ -1623,6 +1675,7 @@ func ExampleQuery_DistinctByT() {
 	for _, product := range noduplicates {
 		fmt.Printf("%s %d\n", product.Name, product.Code)
 	}
+
 	// Output:
 	// apple 9
 	// orange 4
@@ -1658,6 +1711,7 @@ func ExampleQuery_ExceptByT() {
 	for _, product := range except {
 		fmt.Printf("%s %d\n", product.Name, product.Code)
 	}
+
 	// Output:
 	// orange 4
 	// lemon 12
@@ -1675,6 +1729,7 @@ func ExampleQuery_FirstWithT() {
 		)
 
 	fmt.Println(first)
+
 	// Output:
 	// 92
 
@@ -1688,6 +1743,7 @@ func ExampleQuery_ForEach() {
 	From(fruits).ForEach(func(fruit interface{}) {
 		fmt.Println(fruit)
 	})
+
 	// Output:
 	// orange
 	// apple
@@ -1703,6 +1759,7 @@ func ExampleQuery_ForEachIndexed() {
 	From(fruits).ForEachIndexed(func(i int, fruit interface{}) {
 		fmt.Printf("%d.%s\n", i, fruit)
 	})
+
 	// Output:
 	// 0.orange
 	// 1.apple
@@ -1718,6 +1775,7 @@ func ExampleQuery_ForEachT() {
 	From(fruits).ForEachT(func(fruit string) {
 		fmt.Println(fruit)
 	})
+
 	// Output:
 	// orange
 	// apple
@@ -1733,6 +1791,7 @@ func ExampleQuery_ForEachIndexedT() {
 	From(fruits).ForEachIndexedT(func(i int, fruit string) {
 		fmt.Printf("%d.%s\n", i, fruit)
 	})
+
 	// Output:
 	// 0.orange
 	// 1.apple
@@ -1773,6 +1832,7 @@ func ExampleQuery_GroupByT() {
 		}
 
 	}
+
 	// Output:
 	// 1
 	//   Whiskers
@@ -1836,6 +1896,7 @@ func ExampleQuery_GroupJoinT() {
 			fmt.Printf("  %s\n", petName)
 		}
 	}
+
 	// Output:
 	// Hedlund, Magnus:
 	//   Daisy
@@ -1875,6 +1936,7 @@ func ExampleQuery_IntersectByT() {
 	for _, p := range duplicates {
 		fmt.Println(p.Name, "", p.Code)
 	}
+
 	// Output:
 	// apple  9
 
@@ -2012,6 +2074,7 @@ func ExampleQuery_OrderByT() {
 	for _, pet := range orderedPets {
 		fmt.Println(pet.Name, "-", pet.Age)
 	}
+
 	// Output:
 	// Whiskers - 1
 	// Boots - 4
@@ -2053,6 +2116,7 @@ func ExampleQuery_SelectIndexedT() {
 	for _, n := range numsInPlace {
 		fmt.Printf("%d: %t\n", n.Key, n.Value)
 	}
+
 	// Output:
 	// Number: In-place?
 	// 5: false
@@ -2109,6 +2173,7 @@ func ExampleQuery_SelectManyByT() {
 	for _, result := range results {
 		fmt.Println(result)
 	}
+
 	// Output:
 	// Owner: Hedlund, Magnus, Pet: Daisy
 	// Owner: Adams, Terry, Pet: Barley
@@ -2160,6 +2225,7 @@ func ExampleQuery_SelectManyT() {
 	for _, result := range results {
 		fmt.Println(result)
 	}
+
 	// Output:
 	// Rank: #1, Word: the, Counts: 4
 	// Rank: #2, Word: quickly, Counts: 3
@@ -2215,6 +2281,7 @@ func ExampleQuery_SelectManyIndexedT() {
 	for _, result := range results {
 		fmt.Println(result)
 	}
+
 	// Output:
 	// File:[1] - file1.log => line: 1 - INFO: 2013/11/05 18:11:01 main.go:44: Special Information
 	// File:[1] - file1.log => line: 2 - WARNING: 2013/11/05 18:11:01 main.go:45: There is something you need to know about
@@ -2271,6 +2338,7 @@ func ExampleQuery_SelectManyByIndexedT() {
 	for _, result := range results {
 		fmt.Println(result)
 	}
+
 	// Output:
 	// Pet: 0 - Daisy, Owner: Hedlund, Magnus
 	// Pet: 1 - Barley, Owner: Adams, Terry
@@ -2358,6 +2426,7 @@ func ExampleQuery_SortT() {
 	for _, pet := range orderedPets {
 		fmt.Println(pet.Name, "-", pet.Age)
 	}
+
 	// Output:
 	// Whiskers - 1
 	// Boots - 4
@@ -2379,6 +2448,7 @@ func ExampleQuery_TakeWhileT() {
 		ToSlice(&query)
 
 	fmt.Println(query)
+
 	// Output:
 	// [apple banana mango]
 }
@@ -2399,6 +2469,7 @@ func ExampleQuery_TakeWhileIndexedT() {
 		ToSlice(&query)
 
 	fmt.Println(query)
+
 	// Output:
 	// [apple passionfruit banana mango orange blueberry]
 }
@@ -2428,6 +2499,7 @@ func ExampleQuery_ToMapByT() {
 	fmt.Println(map1[4])
 	fmt.Println(map1[9])
 	fmt.Println(map1[12])
+
 	// Output:
 	// orange
 	// apple
@@ -2447,6 +2519,7 @@ func ExampleQuery_WhereT() {
 		ToSlice(&query)
 
 	fmt.Println(query)
+
 	// Output:
 	// [passionfruit blueberry strawberry]
 }
@@ -2464,6 +2537,7 @@ func ExampleQuery_WhereIndexedT() {
 		ToSlice(&query)
 
 	fmt.Println(query)
+
 	// Output:
 	// [0 15 40]
 }
@@ -2480,6 +2554,7 @@ func ExampleQuery_ZipT() {
 		)
 
 	fmt.Println(q.Results())
+
 	// Output:
 	// [[1 one] [2 two] [3 three]]
 }

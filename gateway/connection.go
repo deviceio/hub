@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"net/url"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/hashicorp/yamux"
@@ -78,8 +79,31 @@ func newConnection(conn net.Conn) (*connection, error) {
 		},
 	}
 
-	gc.httpproxy = &httputil.ReverseProxy{
+	target, _ := url.Parse("http://localhost/")
+
+	gc.httpproxy = httputil.NewSingleHostReverseProxy(target)
+	gc.httpproxy.Transport = &http.Transport{
+		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
+			return client.Open()
+		},
+		TLSClientConfig: &tls.Config{
+			InsecureSkipVerify: true,
+		},
+	}
+	gc.httpproxy.BufferPool = &bufpool{
+		size: 250000,
+	}
+
+	/*gc.httpproxy = &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
+			dump, _ := httputil.DumpRequest(r, true)
+			log.Println(string(dump))
+		},
+		ModifyResponse: func(r *http.Response) error {
+			dump, _ := httputil.DumpResponse(r, true)
+			log.Println(string(dump))
+
+			return nil
 		},
 		Transport: &http.Transport{
 			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
@@ -92,7 +116,7 @@ func newConnection(conn net.Conn) (*connection, error) {
 		BufferPool: &bufpool{
 			size: 250000,
 		},
-	}
+	}*/
 
 	resp, err := gc.httpclient.Get("http://localhost/info")
 
@@ -116,11 +140,7 @@ func newConnection(conn net.Conn) (*connection, error) {
 // is responsible to mutate the request before sending adding or removing information
 // as necessary making ready for device consumption.
 func (t *connection) proxyRequest(w http.ResponseWriter, r *http.Request, path string) error {
-	r.RequestURI = ""
-	r.URL.Scheme = "http"
 	r.URL.Path = "/" + path
-	r.URL.Host = "localhost"
-
 	t.httpproxy.ServeHTTP(w, r)
 
 	return nil

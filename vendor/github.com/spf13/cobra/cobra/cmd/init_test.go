@@ -18,7 +18,7 @@ func TestGoldenInitCmd(t *testing.T) {
 	defer os.RemoveAll(project.AbsPath())
 
 	os.Args = []string{"cobra", "init", projectName}
-	if err := RootCmd.Execute(); err != nil {
+	if err := rootCmd.Execute(); err != nil {
 		t.Fatal("Error by execution:", err)
 	}
 
@@ -54,7 +54,9 @@ func TestGoldenInitCmd(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				ioutil.WriteFile(goldenPath, got, 0644)
+				if err := ioutil.WriteFile(goldenPath, got, 0644); err != nil {
+					t.Fatal("Error while updating file:", err)
+				}
 			}
 			return compareFiles(path, goldenPath)
 		}

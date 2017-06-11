@@ -67,28 +67,24 @@
 
 
 [[constraint]]
-  branch = "master"
   name = "github.com/Sirupsen/logrus"
+  version = "0.11.5"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/ahmetb/go-linq"
-
-[[constraint]]
-  name = "github.com/davecgh/go-spew"
-  version = "1.1.0"
+  version = "3.0.0"
 
 [[constraint]]
   branch = "master"
   name = "github.com/deviceio/shared"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/google/uuid"
+  version = "0.2.0"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/gorilla/mux"
+  version = "1.4.0"
 
 [[constraint]]
   branch = "master"
@@ -97,10 +93,6 @@
 [[constraint]]
   branch = "master"
   name = "github.com/mitchellh/go-homedir"
-
-[[constraint]]
-  name = "github.com/pmezard/go-difflib"
-  version = "1.0.0"
 
 [[constraint]]
   branch = "master"
@@ -115,13 +107,13 @@
   name = "github.com/spf13/viper"
 
 [[constraint]]
-  branch = "master"
   name = "github.com/stretchr/testify"
+  version = "1.1.4"
 
 [[constraint]]
   branch = "master"
   name = "golang.org/x/crypto"
 
 [[constraint]]
-  branch = "master"
   name = "gopkg.in/gorethink/gorethink.v2"
+  version = "2.2.2"

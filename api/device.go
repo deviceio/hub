@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/deviceio/hub/cluster"
@@ -46,6 +47,16 @@ func (t *DeviceController) httpProxyDevice(rw http.ResponseWriter, r *http.Reque
 		"X-Deviceio-Parent-Path",
 		fmt.Sprintf("/device/%v", vars["deviceid"]),
 	)
+
+	logrus.WithFields(logrus.Fields{
+		"remoteAddr": r.RemoteAddr,
+		"user": strings.Split(
+			strings.Split(r.Header.Get("Authorization"), " ")[1],
+			":",
+		)[0],
+		"deviceId":       vars["deviceid"],
+		"deviceEndpoint": vars["path"],
+	}).Info("device access")
 
 	t.ClusterService.ProxyDeviceRequest(
 		vars["deviceid"],
