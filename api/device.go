@@ -58,10 +58,16 @@ func (t *DeviceController) httpProxyDevice(rw http.ResponseWriter, r *http.Reque
 		"deviceEndpoint": vars["path"],
 	}).Info("device access")
 
-	t.ClusterService.ProxyDeviceRequest(
+	err = t.ClusterService.ProxyDeviceRequest(
 		vars["deviceid"],
 		vars["path"],
 		rw,
 		r,
 	)
+
+	if err != nil {
+		logrus.WithField("error", err).Error("device proxy request failed")
+		rw.WriteHeader(http.StatusBadGateway)
+		rw.Write([]byte("failed to proxy request to specified device. review logs for further details"))
+	}
 }

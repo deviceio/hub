@@ -13,6 +13,7 @@ import (
 	"github.com/deviceio/hub/db"
 	"github.com/deviceio/hub/gateway"
 	homedir "github.com/mitchellh/go-homedir"
+	"github.com/palantir/stacktrace"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -135,8 +136,26 @@ func start(cmd *cobra.Command) {
 		BindAddr:    fmt.Sprintf("%v:%v", viper.GetString("cluster.bind_addr"), viper.GetString("cluster.bind_port")),
 		TLSCertPath: viper.GetString("cluster.tls_cert_path"),
 		TLSKeyPath:  viper.GetString("cluster.tls_key_path"),
-		LocalDeviceProxyFunc: func(deviceid string, path string, rw http.ResponseWriter, r *http.Request) {
-			gatewayService.ProxyHTTPRequest(deviceid, path, rw, r)
+		LocalDeviceProxyFunc: func(deviceid string, path string, rw http.ResponseWriter, r *http.Request) error {
+			if deviceid == "" {
+				return stacktrace.NewError("deviceid is empty")
+			}
+
+			if rw == nil {
+				return stacktrace.NewError("http.ResponseWriter is nil")
+			}
+
+			if r == nil {
+				return stacktrace.NewError("http.Request is nil")
+			}
+
+			err := gatewayService.ProxyHTTPRequest(deviceid, path, rw, r)
+
+			if err != nil {
+				return stacktrace.Propagate(err, "device proxy func failed")
+			}
+
+			return nil
 		},
 	})
 

@@ -6,11 +6,12 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/deviceio/shared/types"
+	"github.com/google/uuid"
 	"github.com/hashicorp/yamux"
+	"github.com/palantir/stacktrace"
 )
 
 // connectionInfo contains the device identity and envrionment information supplied by
@@ -56,12 +57,16 @@ type connection struct {
 	// httpproxy is used to proxy requests to the device tunnel http server.
 	// this httputil.ReverseProxy contains a custom transport to address the device's http
 	// server over the session multiplexer
-	httpproxy *httputil.ReverseProxy
+	httpproxy *types.HttpStreamProxy
 }
 
 // newConnection instantiates a new instance of the connection type
 func newConnection(conn net.Conn) (*connection, error) {
-	client, _ := yamux.Client(conn, nil)
+	client, err := yamux.Client(conn, nil)
+
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "failed to create mux client")
+	}
 
 	gc := &connection{
 		conn:    conn,
@@ -79,9 +84,13 @@ func newConnection(conn net.Conn) (*connection, error) {
 		},
 	}
 
-	target, _ := url.Parse("http://localhost/")
+	target, err := url.Parse("http://localhost/")
 
-	gc.httpproxy = httputil.NewSingleHostReverseProxy(target)
+	if err != nil {
+		return nil, stacktrace.Propagate(err, "failed to parse proxy url")
+	}
+
+	gc.httpproxy = types.NewSingleHostReverseProxy(target)
 	gc.httpproxy.Transport = &http.Transport{
 		DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
 			return client.Open()
@@ -94,42 +103,20 @@ func newConnection(conn net.Conn) (*connection, error) {
 		size: 250000,
 	}
 
-	/*gc.httpproxy = &httputil.ReverseProxy{
-		Director: func(r *http.Request) {
-			dump, _ := httputil.DumpRequest(r, true)
-			log.Println(string(dump))
-		},
-		ModifyResponse: func(r *http.Response) error {
-			dump, _ := httputil.DumpResponse(r, true)
-			log.Println(string(dump))
-
-			return nil
-		},
-		Transport: &http.Transport{
-			DialContext: func(_ context.Context, _, _ string) (net.Conn, error) {
-				return client.Open()
-			},
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-		BufferPool: &bufpool{
-			size: 250000,
-		},
-	}*/
-
 	resp, err := gc.httpclient.Get("http://localhost/info")
 
 	if err != nil {
-		logrus.Error("Error retrieving device info:", err.Error())
-		return nil, err
+		return nil, stacktrace.Propagate(err, "failed retrieving device info")
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&gc.info)
 
 	if err != nil {
-		logrus.Error("Error decoding device info:", err.Error())
-		return nil, err
+		return nil, stacktrace.Propagate(err, "failed to decode device info")
+	}
+
+	if _, err := uuid.Parse(gc.info.ID); err != nil {
+		return nil, stacktrace.Propagate(err, "agent id is not a valid UUID")
 	}
 
 	return gc, nil

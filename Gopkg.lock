@@ -17,7 +17,7 @@
   branch = "master"
   name = "github.com/boombuler/barcode"
   packages = [".","qr","utils"]
-  revision = "335316296ea80cf3ec593dbdf0ce17016d5771c8"
+  revision = "a4f901055aa151cd82782e5e2cd0000d5a48eed7"
 
 [[projects]]
   name = "github.com/cenk/backoff"
@@ -110,6 +110,12 @@
   revision = "d0303fe809921458f417bcf828397a65db30a7e4"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/palantir/stacktrace"
+  packages = [".","cleanpath"]
+  revision = "78658fd2d1772b755720ed8c44367d11ee5380d6"
+
+[[projects]]
   name = "github.com/pelletier/go-buffruneio"
   packages = ["."]
   revision = "c37440a7cf42ac63b919c752ca73a85067e05992"
@@ -149,7 +155,7 @@
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "8d4ce3549a0bf0e3569df3aae7423b7743cd05a9"
+  revision = "b4dbd37a01839e0653eec12aa4bbb2a2ce7b2a37"
 
 [[projects]]
   branch = "master"
@@ -167,7 +173,7 @@
   branch = "master"
   name = "github.com/spf13/viper"
   packages = ["."]
-  revision = "0967fc9aceab2ce9da34061253ac10fb99bba5b2"
+  revision = "a1ecfa6a20bd4ef9e9caded262ee1b1b26847675"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -179,19 +185,19 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ed25519","ed25519/internal/edwards25519","pbkdf2"]
-  revision = "e1a4589e7d3ea14a3352255d04b6f1a418845e5e"
+  revision = "fea6c2c83557701d46ea1cc0ea4c8272632fa3bd"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "b90f89a1e7a9c1f6b918820b3daa7f08488c8594"
+  revision = "0b25a408a50076fbbcae6b7ac0ea5fbb0b085e79"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "ccbd3f7822129ff389f8ca4858a9b9d4d910531c"
+  revision = "3491b61b9edc56653ad4333e605e2908e46a036b"
 
 [[projects]]
   name = "gopkg.in/dancannon/gorethink.v2"
@@ -220,6 +226,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "651e7d582c482c61a8a85b9bdb3ee608b48c40d578f9ba8702037c91f159f584"
+  inputs-digest = "6f47a5674b1f29759be4bfd632b06cc3709889513879de93221fdab74d69a01f"
   solver-name = "gps-cdcl"
   solver-version = 1

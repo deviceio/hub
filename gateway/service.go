@@ -2,7 +2,6 @@ package gateway
 
 import (
 	"crypto/tls"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"net"
@@ -17,6 +16,8 @@ import (
 	"strings"
 
 	"bytes"
+
+	"github.com/palantir/stacktrace"
 )
 
 type Service struct {
@@ -77,16 +78,28 @@ func (t *Service) Start() {
 }
 
 func (t *Service) ProxyHTTPRequest(deviceid string, path string, rw http.ResponseWriter, r *http.Request) error {
+	if deviceid == "" {
+		return stacktrace.NewError("deviceid is empty")
+	}
+
+	if rw == nil {
+		return stacktrace.NewError("http.ResponseWriter is nil")
+	}
+
+	if r == nil {
+		return stacktrace.NewError("http.Request is nil")
+	}
+
 	c, err := t.findConnectionForDevice(deviceid)
 
 	if err != nil {
-		return err
+		return stacktrace.Propagate(err, "gateway failed to locate device")
 	}
 
 	err = c.proxyRequest(rw, r, path)
 
 	if err != nil {
-		return err
+		return stacktrace.Propagate(err, "gateway failed to proxy on connection")
 	}
 
 	return nil
@@ -167,6 +180,10 @@ func (t *Service) makeTempCertificates() (string, string) {
 }
 
 func (t *Service) findConnectionForDevice(deviceid string) (*connection, error) {
+	if deviceid == "" {
+		return nil, stacktrace.NewError("deviceid is empty")
+	}
+
 	t.mutex.Lock()
 	defer t.mutex.Unlock()
 
@@ -183,16 +200,11 @@ func (t *Service) findConnectionForDevice(deviceid string) (*connection, error) 
 		if len(h) == 1 {
 			return h[0], nil
 		} else if len(h) > 1 {
-			return nil, &ErrAmbiguousHostnameLookup{
-				Message: "Ambiguous hostname lookup. Two or more devices connected with the same hostname",
-			}
+			return nil, stacktrace.NewError("Ambiguous hostname lookup. Two or more devices connected with the same hostname")
 		}
 	}
 
-	return nil, &ErrGatewayDeviceDoesNotExist{
-		DeviceID: deviceid,
-		Message:  fmt.Sprintf("No such device found with id or hostname '%v'", deviceid),
-	}
+	return nil, stacktrace.NewError("No such device found with id or hostname '%v'", deviceid)
 }
 
 func (t *Service) closeloop(c *connection) {

@@ -19,6 +19,7 @@ import (
 	"github.com/deviceio/shared/types"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/palantir/stacktrace"
 	"github.com/pquerna/otp"
 	"github.com/pquerna/otp/totp"
 	"golang.org/x/crypto/ed25519"
@@ -26,7 +27,7 @@ import (
 
 type Service interface {
 	AuthenticateAPIRequest(r *http.Request) (failure error)
-	ProxyDeviceRequest(deviceid string, path string, rw http.ResponseWriter, r *http.Request)
+	ProxyDeviceRequest(deviceid string, path string, rw http.ResponseWriter, r *http.Request) error
 	Start()
 }
 
@@ -141,9 +142,27 @@ func (t *service) AuthenticateAPIRequest(r *http.Request) error {
 	return nil
 }
 
-func (t *service) ProxyDeviceRequest(deviceid string, path string, rw http.ResponseWriter, r *http.Request) {
+func (t *service) ProxyDeviceRequest(deviceid string, path string, rw http.ResponseWriter, r *http.Request) error {
+	if deviceid == "" {
+		return stacktrace.NewError("deviceid empty")
+	}
+
+	if rw == nil {
+		return stacktrace.NewError("http.ResponseWriter is nil")
+	}
+
+	if r == nil {
+		return stacktrace.NewError("http.Request is nil")
+	}
+
 	// TODO: proxy to other cluster members
-	t.config.LocalDeviceProxyFunc(deviceid, path, rw, r)
+	err := t.config.LocalDeviceProxyFunc(deviceid, path, rw, r)
+
+	if err != nil {
+		return stacktrace.Propagate(err, "cluster failed proxy to local gateway")
+	}
+
+	return nil
 }
 
 func (t *service) Start() {
