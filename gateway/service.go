@@ -20,13 +20,16 @@ import (
 	"github.com/palantir/stacktrace"
 )
 
+type serviceConnections struct {
+	items map[string]*connection
+	*sync.RWMutex
+}
+
 type Service struct {
 	BindAddr    string
 	TLSCertPath string
 	TLSKeyPath  string
-	conns       map[string]*connection
-	hosts       map[string][]*connection
-	mutex       *sync.Mutex
+	conns       *serviceConnections
 }
 
 func (t *Service) Start() {
@@ -106,32 +109,51 @@ func (t *Service) ProxyHTTPRequest(deviceid string, path string, rw http.Respons
 }
 
 func (t *Service) init() {
-	t.conns = map[string]*connection{}
-	t.hosts = map[string][]*connection{}
-	t.mutex = &sync.Mutex{}
+	t.conns = &serviceConnections{
+		items:   map[string]*connection{},
+		RWMutex: &sync.RWMutex{},
+	}
 }
 
 func (t *Service) handleConnection(conn net.Conn) {
 	var gwconn *connection
 	var err error
-	var hostconns []*connection
-	var ok bool
 
 	if gwconn, err = newConnection(conn); err != nil {
 		logrus.Error("Failed to create gateway connection:", err.Error())
 		return
 	}
 
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.conns.Lock()
+	defer t.conns.Unlock()
 
-	t.conns[strings.ToLower(gwconn.info.ID)] = gwconn
+	id := strings.ToLower(gwconn.info.ID)
+	hostname := strings.ToLower(gwconn.info.Hostname)
 
-	if hostconns, ok = t.hosts[strings.ToLower(gwconn.info.Hostname)]; !ok {
-		t.hosts[strings.ToLower(gwconn.info.Hostname)] = []*connection{gwconn}
-	} else {
-		hostconns = append(hostconns, gwconn)
+	if c, cok := t.conns.items[id]; cok {
+		logrus.WithFields(logrus.Fields{
+			"id": id,
+			"connectedDeviceAddr":  c.conn.RemoteAddr().String(),
+			"connectingDeviceAddr": gwconn.conn.RemoteAddr().String(),
+		}).Error("device connections closed due to duplicate id")
+		c.conn.Close()
+		gwconn.conn.Close()
+		return
 	}
+
+	if c, hok := t.conns.items[hostname]; hok {
+		logrus.WithFields(logrus.Fields{
+			"hostname":             hostname,
+			"connectedDeviceAddr":  c.conn.RemoteAddr().String(),
+			"connectingDeviceAddr": gwconn.conn.RemoteAddr().String(),
+		}).Error("device connections closed due to duplicate hostname")
+		c.conn.Close()
+		gwconn.conn.Close()
+		return
+	}
+
+	t.conns.items[id] = gwconn
+	t.conns.items[hostname] = gwconn
 
 	logrus.WithFields(logrus.Fields{
 		"localAddr":    conn.LocalAddr(),
@@ -184,24 +206,15 @@ func (t *Service) findConnectionForDevice(deviceid string) (*connection, error) 
 		return nil, stacktrace.NewError("deviceid is empty")
 	}
 
-	t.mutex.Lock()
-	defer t.mutex.Unlock()
+	t.conns.RLock()
+	defer t.conns.RUnlock()
 
 	deviceid = strings.ToLower(deviceid)
 
-	c, cok := t.conns[deviceid]
-	h, hok := t.hosts[deviceid]
+	c, cok := t.conns.items[deviceid]
 
 	if cok {
 		return c, nil
-	}
-
-	if hok {
-		if len(h) == 1 {
-			return h[0], nil
-		} else if len(h) > 1 {
-			return nil, stacktrace.NewError("Ambiguous hostname lookup. Two or more devices connected with the same hostname")
-		}
 	}
 
 	return nil, stacktrace.NewError("No such device found with id or hostname '%v'", deviceid)
@@ -220,19 +233,18 @@ func (t *Service) closeloop(c *connection) {
 				"tags":         c.info.Tags,
 			}).Info("device disconnected")
 
-			t.mutex.Lock()
-			defer t.mutex.Unlock()
+			t.conns.Lock()
+			defer t.conns.Unlock()
 
 			id := strings.ToLower(c.info.ID)
 			hostname := strings.ToLower(c.info.Hostname)
 
-			delete(t.conns, id)
+			if _, cok := t.conns.items[id]; cok {
+				delete(t.conns.items, id)
+			}
 
-			for a, host := range t.hosts[hostname] {
-				if host == c {
-					t.hosts[hostname] = append(t.hosts[hostname][:a], t.hosts[hostname][a+1:]...)
-					break
-				}
+			if _, hok := t.conns.items[hostname]; hok {
+				delete(t.conns.items, hostname)
 			}
 
 			return
