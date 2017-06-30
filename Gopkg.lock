@@ -17,7 +17,7 @@
   branch = "master"
   name = "github.com/boombuler/barcode"
   packages = [".","qr","utils"]
-  revision = "a4f901055aa151cd82782e5e2cd0000d5a48eed7"
+  revision = "56ef0af91246fb5279df4f87bc3daf1bf7cb9e89"
 
 [[projects]]
   name = "github.com/cenk/backoff"
@@ -35,7 +35,7 @@
   branch = "master"
   name = "github.com/deviceio/shared"
   packages = ["try","types"]
-  revision = "bc67982208cefd6450d6deb2c1bf6e0ce6184c14"
+  revision = "1843059217069c28a472b7bb048f8de1e4f7799a"
 
 [[projects]]
   name = "github.com/fsnotify/fsnotify"
@@ -47,7 +47,7 @@
   branch = "master"
   name = "github.com/golang/protobuf"
   packages = ["proto"]
-  revision = "5a0f697c9ed9d68fef0116532c6e05cfeae00e55"
+  revision = "1fb8fd32a09087bcd727225167edd31e1b9ceb24"
 
 [[projects]]
   name = "github.com/google/uuid"
@@ -155,7 +155,7 @@
   branch = "master"
   name = "github.com/spf13/cobra"
   packages = ["."]
-  revision = "b4dbd37a01839e0653eec12aa4bbb2a2ce7b2a37"
+  revision = "99b5d838ca16c25cc4944e323684f8415e8b10ba"
 
 [[projects]]
   branch = "master"
@@ -173,7 +173,7 @@
   branch = "master"
   name = "github.com/spf13/viper"
   packages = ["."]
-  revision = "a1ecfa6a20bd4ef9e9caded262ee1b1b26847675"
+  revision = "c1de95864d73a5465492829d7cb2dd422b19ac96"
 
 [[projects]]
   name = "github.com/stretchr/testify"
@@ -185,19 +185,19 @@
   branch = "master"
   name = "golang.org/x/crypto"
   packages = ["ed25519","ed25519/internal/edwards25519","pbkdf2"]
-  revision = "fea6c2c83557701d46ea1cc0ea4c8272632fa3bd"
+  revision = "adbae1b6b6fb4b02448a0fc0dbbc9ba2b95b294d"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/sys"
   packages = ["unix"]
-  revision = "0b25a408a50076fbbcae6b7ac0ea5fbb0b085e79"
+  revision = "fb4cac33e3196ff7f507ab9b2d2a44b0142f5b5a"
 
 [[projects]]
   branch = "master"
   name = "golang.org/x/text"
   packages = ["internal/gen","internal/triegen","internal/ucd","transform","unicode/cldr","unicode/norm"]
-  revision = "3491b61b9edc56653ad4333e605e2908e46a036b"
+  revision = "4e9ab9ee170f2a39bd66c92b3e0a47ff47a4bc77"
 
 [[projects]]
   name = "gopkg.in/dancannon/gorethink.v2"

@@ -11,4 +11,4 @@ EXPOSE 4431 5531 8975
 
 USER nobody
 
-ENTRYPOINT ["deviceio-hub", "start"]
+ENTRYPOINT ["deviceio-hub"]

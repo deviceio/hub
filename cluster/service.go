@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"encoding/base64"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -27,6 +28,7 @@ import (
 
 type Service interface {
 	AuthenticateAPIRequest(r *http.Request) (failure error)
+	Initialize()
 	ProxyDeviceRequest(deviceid string, path string, rw http.ResponseWriter, r *http.Request) error
 	Start()
 }
@@ -176,8 +178,6 @@ func (t *service) Start() {
 	go t.hydrateMemberCache()
 	go t.hydrateDeviceCache()
 
-	t.makeDefaultAdmin()
-
 	server := http.NewServeMux()
 	router := mux.NewRouter()
 
@@ -206,7 +206,7 @@ func (t *service) Start() {
 	}
 }
 
-func (t *service) makeDefaultAdmin() {
+func (t *service) Initialize() {
 	var count int
 
 	cursor, err := db.Table(db.UserTable).Filter(db.Filter{
@@ -223,7 +223,7 @@ func (t *service) makeDefaultAdmin() {
 	}
 
 	if count > 0 {
-		return
+		logrus.Fatal("cluster already initialized")
 	}
 
 	adminTOTPKey, _ := totp.Generate(totp.GenerateOpts{
@@ -241,7 +241,7 @@ func (t *service) makeDefaultAdmin() {
 	pubKey, privKey, err := ed25519.GenerateKey(rand.Reader)
 
 	if err != nil {
-		logrus.WithField("error", err.Error()).Fatal("Error generating ED255519 keypair")
+		logrus.WithField("error", err.Error()).Fatal("error generating ED255519 keypair")
 	}
 
 	user := &User{
@@ -260,13 +260,25 @@ func (t *service) makeDefaultAdmin() {
 		logrus.Fatal(err.Error())
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"id":          resp.GeneratedKeys[0],
-		"login":       user.Login,
-		"password":    adminPasswordPlain,
-		"totp_secret": string(user.TOTPSecret),
-		"private_key": base64.StdEncoding.EncodeToString(privKey),
-	}).Info("initial admin credentials")
+	fmt.Println(fmt.Sprintf(`
+----------------------------------
+---- INITIAL ADMIN CREDENTIAL ----
+----------------------------------
+please save these credential securely you will be unable to retrieve them later.
+
+Admin ID          : %v
+Admin Login       : %v
+Admin Password    : %v
+Admin TOTP Secret : %v
+Admin Private Key : %v
+----------------------------------
+	`,
+		resp.GeneratedKeys[0],
+		user.Login,
+		adminPasswordPlain,
+		string(user.TOTPSecret),
+		base64.StdEncoding.EncodeToString(privKey),
+	))
 }
 
 func (t *service) makeTempCertificates() (string, string) {

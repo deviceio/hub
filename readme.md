@@ -1,27 +1,31 @@
 # Deviceio Hub
 
-The Deviceio Hub provides a centralized location to conduct real-time system orchestration of multiple connected devices. The Hub listens for incoming Deviceio Agent connections and exposes Agent APIs via HTTP endpoints available from the Hub. 
+The Deviceio Hub provides real-time access to connected devices.
 
-# Deployment
-
-## Docker - Quick Start
+# Quick Start with Docker
 
 Start a rethinkdb instance
 
 ```bash
-docker run -d --name deviceio-test-db rethinkdb
+docker run -d --name deviceio-db rethinkdb
 ```
 
-Wait for the rethinkdb instance to startup by querying the container logs until you see `Server ready`
+Wait for the rethinkdb instance to startup by following the container logs until you see `Server ready`
 
 ```bash
-docker logs deviceio-test-db
+docker logs -f deviceio-db
+```
+
+Initialize the Deviceio Hub database and initial credential
+
+```bash
+docker run -ti --rm --link deviceio-db:db deviceio/hub init --db-host db
 ```
 
 Start a Deviceio Hub instance and link to our rethinkdb instance
 
 ```bash
-docker run -d --name deviceio-test-hub -p 4431:4431 -p 8975:8975 --link deviceio-test-db:db deviceio/hub --db-host db
+docker run -d --name deviceio-hub -p 4431:4431 -p 8975:8975 --link deviceio-db:db deviceio/hub start --db-host db
 ```
 
 Test connectivity to the hub api port
@@ -33,10 +37,10 @@ curl -k -v https://127.0.0.1:4431/v1/status
 Test connectivity to the hub gateway port
 
 ```bash
-curl -k -v https://127.0.0.1:8975/v1/status
+telnet 127.0.0.1 8975
 ```
 
 Next:
 
-* Install and join a Deviceio Agent to your hub instance https://github.com/deviceio/agent
-* Install and interact with the hub with the CLI tools https://github.com/deviceio/cli
+* Install and join a device to your hub instance https://github.com/deviceio/agent
+* Install and interact with your devices via the CLI integration https://github.com/deviceio/cli

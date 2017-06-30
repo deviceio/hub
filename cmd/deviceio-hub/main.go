@@ -20,7 +20,7 @@ import (
 
 var (
 	startCmd *cobra.Command
-	setupCmd *cobra.Command
+	initCmd  *cobra.Command
 	rootCmd  *cobra.Command
 )
 
@@ -32,7 +32,7 @@ func main() {
 		Short: "starts the hub",
 		Long:  `starts the api, cluster and gateway components of the hub`,
 		Run: func(cmd *cobra.Command, args []string) {
-			start(cmd)
+			start(cmd, false)
 		},
 	}
 
@@ -53,19 +53,34 @@ func main() {
 	startCmd.Flags().String("gateway-tls-cert-path", "", "path to the gateway tls certificate to use. If blank an auto-generated cert will be used")
 	startCmd.Flags().String("gateway-tls-key-path", "", "path to the gateway tls key to use. If blank an auto-generated cert will be used")
 
+	initCmd = &cobra.Command{
+		Use:   "init",
+		Short: "init hub cluster",
+		Long:  `initializes the hub cluster by generating the initial admin user`,
+		Run: func(cmd *cobra.Command, args []string) {
+			start(cmd, true)
+		},
+	}
+
+	initCmd.Flags().String("db-host", "127.0.0.1", "Rethinkdb host to connect to")
+	initCmd.Flags().String("db-name", "DeviceioHub", "Rethinkdb database name to use")
+	initCmd.Flags().String("db-user", "", "Rethinkdb user to authenticate as")
+	initCmd.Flags().String("db-pass", "", "Rethinkdb password to authenticate with")
+
 	rootCmd = &cobra.Command{}
 	rootCmd.AddCommand(startCmd)
+	rootCmd.AddCommand(initCmd)
 
 	if err := rootCmd.Execute(); err != nil {
-		panic("Error executing cli: " + err.Error())
+		log.Fatal(stacktrace.Propagate(err, "Error executing cli"))
 	}
 }
 
-func start(cmd *cobra.Command) {
+func start(cmd *cobra.Command, init bool) {
 	homedir, err := homedir.Dir()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(stacktrace.Propagate(err, "failed to locate home directory"))
 	}
 
 	viper.BindPFlag("db.host", cmd.Flags().Lookup("db-host"))
@@ -126,14 +141,27 @@ func start(cmd *cobra.Command) {
 	})
 	db.Migrate()
 
+	if init {
+		cluster.NewService(&cluster.Config{}).Initialize()
+		return
+	}
+
 	gatewayService := &gateway.Service{
-		BindAddr:    fmt.Sprintf("%v:%v", viper.GetString("gateway.bind_addr"), viper.GetString("gateway.bind_port")),
+		BindAddr: fmt.Sprintf(
+			"%v:%v",
+			viper.GetString("gateway.bind_addr"),
+			viper.GetString("gateway.bind_port"),
+		),
 		TLSCertPath: viper.GetString("gateway.tls_cert_path"),
 		TLSKeyPath:  viper.GetString("gateway.tls_key_path"),
 	}
 
 	clusterService := cluster.NewService(&cluster.Config{
-		BindAddr:    fmt.Sprintf("%v:%v", viper.GetString("cluster.bind_addr"), viper.GetString("cluster.bind_port")),
+		BindAddr: fmt.Sprintf(
+			"%v:%v",
+			viper.GetString("cluster.bind_addr"),
+			viper.GetString("cluster.bind_port"),
+		),
 		TLSCertPath: viper.GetString("cluster.tls_cert_path"),
 		TLSKeyPath:  viper.GetString("cluster.tls_key_path"),
 		LocalDeviceProxyFunc: func(deviceid string, path string, rw http.ResponseWriter, r *http.Request) error {
@@ -160,7 +188,11 @@ func start(cmd *cobra.Command) {
 	})
 
 	apiService := &api.Service{
-		BindAddr:    fmt.Sprintf("%v:%v", viper.GetString("api.bind_addr"), viper.GetString("api.bind_port")),
+		BindAddr: fmt.Sprintf(
+			"%v:%v",
+			viper.GetString("api.bind_addr"),
+			viper.GetString("api.bind_port"),
+		),
 		TLSCertPath: viper.GetString("api.tls_cert_path"),
 		TLSKeyPath:  viper.GetString("api.tls_key_path"),
 		Controllers: []api.Controller{
