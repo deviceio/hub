@@ -16,7 +16,7 @@ Wait for the rethinkdb instance to startup by following the container logs until
 docker logs -f deviceio-db
 ```
 
-Initialize the Deviceio Hub database and initial credential
+Initialize the Deviceio Hub database and initial credential. **the command below generates initial credentials ensure they are saved securely, they will be needed for future authentication against the hub api**
 
 ```bash
 docker run -ti --rm --link deviceio-db:db deviceio/hub init --db-host db
