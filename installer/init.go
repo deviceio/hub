@@ -1,5 +1,0 @@
-package installer
-
-func init() {
-
-}

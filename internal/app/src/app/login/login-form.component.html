@@ -1,0 +1,14 @@
+<div *ngIf="!session.authenticated">
+    <md-form-field>
+        <input mdInput type="text" placeholder="username" [value]="username" (input)="username = $event.target.value"/>
+    </md-form-field>
+
+    <md-form-field>
+        <input mdInput type="password" placeholder="password" [value]="password" (input)="password = $event.target.value"/>
+    </md-form-field>
+
+    <button md-raised-button (click)="login()">Login</button>
+
+    <md-spinner *ngIf="loading" style="width:25px;"></md-spinner>
+    <div *ngIf="error !== ''" style="color:red">{{error}}</div>
+</div>
